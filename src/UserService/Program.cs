@@ -1,6 +1,6 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// TODO: Konfiguracja serwisów (Identity, JWT, DbContext)
+// TODO: Konfiguracja serwisów
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

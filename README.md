@@ -1,0 +1,227 @@
+# Helpdesk System - System Rozproszonej Pomocy Technicznej
+
+System Helpdesk zbudowany jako rozproszona aplikacja mikroservisowa, gotowa do deploymentu na AWS.
+
+## 🏗️ Architektura
+
+System składa się z następujących mikroservisów:
+
+### Mikroservisy
+- **AuthService** (Port 5001) - Uwierzytelnianie i autoryzacja użytkowników (JWT, Identity)
+- **TicketService** (Port 5002) - Zarządzanie zgłoszeniami helpdesk
+- **UserService** (Port 5003) - Zarządzanie profilami użytkowników
+- **NotificationService** (Port 5004) - Wysyłanie powiadomień (email, SMS)
+- **ApiGateway** (Port 5000) - Ocelot API Gateway dla routingu żądań
+
+### Infrastruktura
+- **PostgreSQL** - Bazy danych dla każdego serwisu
+- **RabbitMQ** - Message broker dla komunikacji asynchronicznej między serwisami
+- **Docker & Docker Compose** - Konteneryzacja i orkiestracja lokalna
+- **AWS ECS/Fargate** - Deployment w chmurze (CloudFormation templates)
+
+## 📁 Struktura Projektu
+
+```
+helpdesk-system/
+├── src/
+│   ├── Shared/                  # Wspólne modele, DTOs, events, messaging
+│   ├── AuthService/             # Serwis uwierzytelniania
+│   ├── TicketService/           # Serwis zgłoszeń
+│   ├── UserService/             # Serwis użytkowników
+│   ├── NotificationService/     # Serwis powiadomień
+│   └── ApiGateway/              # API Gateway (Ocelot)
+├── infrastructure/              # AWS CloudFormation/CDK templates
+├── docker/                      # Skrypty Docker
+├── docs/                        # Dokumentacja
+└── docker-compose.yml           # Konfiguracja Docker Compose
+```
+
+## 🚀 Quick Start
+
+### Wymagania
+- .NET 9.0 SDK
+- Docker i Docker Compose
+- PostgreSQL (lub użyj Docker Compose)
+- RabbitMQ (lub użyj Docker Compose)
+
+### Uruchomienie Lokalne z Docker Compose
+
+```bash
+# Zbudowanie i uruchomienie wszystkich serwisów
+docker-compose up --build
+
+# W tle
+docker-compose up -d --build
+
+# Sprawdzenie statusu
+docker-compose ps
+
+# Logi
+docker-compose logs -f
+
+# Zatrzymanie
+docker-compose down
+```
+
+### Dostęp do Serwisów
+
+- **API Gateway**: http://localhost:5000
+- **Auth Service**: http://localhost:5001
+- **Ticket Service**: http://localhost:5002
+- **User Service**: http://localhost:5003
+- **Notification Service**: http://localhost:5004
+- **RabbitMQ Management**: http://localhost:15672 (guest/guest)
+
+### Uruchomienie Lokalne bez Docker
+
+```bash
+# Restore dependencies
+dotnet restore
+
+# Uruchomienie poszczególnych serwisów
+dotnet run --project src/AuthService
+dotnet run --project src/TicketService
+dotnet run --project src/UserService
+dotnet run --project src/NotificationService
+dotnet run --project src/ApiGateway
+```
+
+## 🔧 Development
+
+### TODO: Implementacja Funkcjonalności
+
+Każdy plik zawiera komentarze `// TODO:` wskazujące miejsca wymagające implementacji.
+
+#### Kolejne kroki rozwoju:
+1. **Shared Library** - Implementacja modeli, DTOs, eventów
+2. **AuthService** - JWT tokens, Identity, rejestracja/logowanie
+3. **TicketService** - CRUD dla zgłoszeń, workflow statusów
+4. **UserService** - Zarządzanie profilami użytkowników
+5. **NotificationService** - Email/SMS sending, event consumers
+6. **Message Queue** - RabbitMQ publishers/consumers
+7. **Database Migrations** - Entity Framework migrations
+8. **API Documentation** - Swagger/OpenAPI specs
+9. **Unit Tests** - xUnit test projects
+10. **AWS Deployment** - CloudFormation completion
+
+### Bazy Danych
+
+Każdy mikroserws ma własną bazę danych (Database per Service pattern):
+- `helpdesk_auth` - AuthService
+- `helpdesk_tickets` - TicketService
+- `helpdesk_users` - UserService
+
+### Migracje Entity Framework
+
+```bash
+# Dodanie migracji
+dotnet ef migrations add InitialCreate --project src/AuthService
+
+# Aktualizacja bazy danych
+dotnet ef database update --project src/AuthService
+```
+
+## 📊 Message Queue
+
+System używa RabbitMQ dla komunikacji event-driven między serwisami:
+
+### Queues:
+- `ticket-created` - Nowy ticket utworzony
+- `ticket-assigned` - Ticket przypisany do agenta
+- `ticket-status-changed` - Status ticketu zmieniony
+- `comment-added` - Komentarz dodany
+- `user-registered` - Nowy użytkownik zarejestrowany
+- `send-email` - Wysyłka emaila
+- `send-sms` - Wysyłka SMS
+
+## ☁️ AWS Deployment
+
+### Przygotowanie
+
+1. Skonfiguruj AWS CLI
+2. Zbuduj Docker images
+3. Wypchnij images do Amazon ECR
+4. Deploy CloudFormation stack
+
+```bash
+# Deploy infrastructure
+aws cloudformation create-stack \
+  --stack-name helpdesk-system \
+  --template-body file://infrastructure/cloudformation-template.yaml \
+  --parameters ParameterKey=Environment,ParameterValue=dev \
+  --capabilities CAPABILITY_IAM
+```
+
+### Zasoby AWS (TODO: Implementacja)
+- **ECS/Fargate** - Container orchestration
+- **Application Load Balancer** - Load balancing
+- **RDS PostgreSQL** - Managed databases
+- **SQS** - Message queuing (alternatywa dla RabbitMQ)
+- **SNS** - Push notifications
+- **CloudWatch** - Logging i monitoring
+- **S3** - File storage
+
+## 🧪 Testing
+
+```bash
+# Uruchomienie testów
+dotnet test
+
+# TODO: Dodanie projektów testowych
+```
+
+## 📝 API Documentation
+
+Swagger UI dostępny dla każdego serwisu:
+- Auth: http://localhost:5001/swagger
+- Tickets: http://localhost:5002/swagger
+- Users: http://localhost:5003/swagger
+- Notifications: http://localhost:5004/swagger
+
+## 🔐 Security
+
+- JWT Bearer Authentication
+- Role-based Authorization (Customer, Agent, Administrator)
+- HTTPS w production
+- Secrets w AWS Secrets Manager (production)
+
+## 📚 Technologie
+
+- **.NET 9.0** - Framework
+- **ASP.NET Core** - Web API
+- **Entity Framework Core** - ORM
+- **PostgreSQL** - Database
+- **RabbitMQ** - Message Broker
+- **Ocelot** - API Gateway
+- **Docker** - Containerization
+- **AWS** - Cloud Platform
+- **CloudFormation** - Infrastructure as Code
+
+## 👥 Dla Projektu z Inżynierii Oprogramowania
+
+Ten projekt demonstruje:
+- ✅ Architekturę mikroservisową
+- ✅ System rozproszony
+- ✅ Event-driven communication
+- ✅ Database per service pattern
+- ✅ API Gateway pattern
+- ✅ Containerization
+- ✅ Cloud-ready deployment
+- ✅ Separation of concerns
+- ✅ Scalability i resilience
+
+## 📖 Dokumentacja Dodatkowa
+
+Szczegółowa dokumentacja znajduje się w folderze `docs/`:
+- Architecture Diagram (TODO)
+- API Specifications (TODO)
+- Deployment Guide (TODO)
+- User Guide (TODO)
+
+## 🤝 Contributing
+
+Projekt jest szkieletem gotowym do rozbudowy. Implementuj funkcjonalności krok po kroku.
+
+## 📄 License
+
+Projekt edukacyjny - Inżynieria Oprogramowania

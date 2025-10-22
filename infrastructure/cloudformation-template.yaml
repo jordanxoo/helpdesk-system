@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Helpdesk System Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - production
+
+Resources:
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-helpdesk-vpc
+
+  # TODO: Subnets, Security Groups, Load Balancers
+  # TODO: ECS Cluster, Task Definitions, Services
+  # TODO: RDS PostgreSQL Instance
+  # TODO: SQS Queues, SNS Topics
+  # TODO: S3 Buckets
+  # TODO: CloudWatch Logs
+  # TODO: IAM Roles and Policies
