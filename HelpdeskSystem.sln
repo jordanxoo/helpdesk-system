@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{55AD7C1D-A967-466F-89DC-D1EC1015EF19}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuthService", "src\AuthService\AuthService.csproj", "{695180C4-C78F-41C1-8108-394C1E412341}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{695180C4-C78F-41C1-8108-394C1E412341}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{695180C4-C78F-41C1-8108-394C1E412341}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{695180C4-C78F-41C1-8108-394C1E412341}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{695180C4-C78F-41C1-8108-394C1E412341}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{695180C4-C78F-41C1-8108-394C1E412341} = {55AD7C1D-A967-466F-89DC-D1EC1015EF19}
+	EndGlobalSection
+EndGlobal
