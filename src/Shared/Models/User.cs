@@ -2,12 +2,22 @@ namespace Shared.Models;
 
 public class User
 {
-    // TODO: Implementacja modelu użytkownika
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public UserRole Role { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    public string FullName => $"{FirstName} {LastName}";
 }
 
 public enum UserRole
 {
-    Customer,
-    Agent,
-    Administrator
+    Customer,      // Klient zgłaszający problemy
+    Agent,         // Agent pomocy technicznej
+    Administrator  // Administrator systemu
 }
