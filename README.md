@@ -86,24 +86,6 @@ dotnet run --project src/NotificationService
 dotnet run --project src/ApiGateway
 ```
 
-## 🔧 Development
-
-### TODO: Implementacja Funkcjonalności
-
-Każdy plik zawiera komentarze `// TODO:` wskazujące miejsca wymagające implementacji.
-
-#### Kolejne kroki rozwoju:
-1. **Shared Library** - Implementacja modeli, DTOs, eventów
-2. **AuthService** - JWT tokens, Identity, rejestracja/logowanie
-3. **TicketService** - CRUD dla zgłoszeń, workflow statusów
-4. **UserService** - Zarządzanie profilami użytkowników
-5. **NotificationService** - Email/SMS sending, event consumers
-6. **Message Queue** - RabbitMQ publishers/consumers
-7. **Database Migrations** - Entity Framework migrations
-8. **API Documentation** - Swagger/OpenAPI specs
-9. **Unit Tests** - xUnit test projects
-10. **AWS Deployment** - CloudFormation completion
-
 ### Bazy Danych
 
 Każdy mikroserws ma własną bazę danych (Database per Service pattern):
@@ -167,7 +149,6 @@ aws cloudformation create-stack \
 # Uruchomienie testów
 dotnet test
 
-# TODO: Dodanie projektów testowych
 ```
 
 ## 📝 API Documentation
@@ -197,7 +178,7 @@ Swagger UI dostępny dla każdego serwisu:
 - **AWS** - Cloud Platform
 - **CloudFormation** - Infrastructure as Code
 
-## 👥 Dla Projektu z Inżynierii Oprogramowania
+## 👥 PROJEKT
 
 Ten projekt demonstruje:
 - ✅ Architekturę mikroservisową
@@ -210,18 +191,3 @@ Ten projekt demonstruje:
 - ✅ Separation of concerns
 - ✅ Scalability i resilience
 
-## 📖 Dokumentacja Dodatkowa
-
-Szczegółowa dokumentacja znajduje się w folderze `docs/`:
-- Architecture Diagram (TODO)
-- API Specifications (TODO)
-- Deployment Guide (TODO)
-- User Guide (TODO)
-
-## 🤝 Contributing
-
-Projekt jest szkieletem gotowym do rozbudowy. Implementuj funkcjonalności krok po kroku.
-
-## 📄 License
-
-Projekt edukacyjny - Inżynieria Oprogramowania
