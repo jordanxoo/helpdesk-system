@@ -2,12 +2,35 @@ namespace Shared.Models;
 
 public class Ticket
 {
-    // TODO: Implementacja modelu ticketu
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public TicketStatus Status { get; set; }
+    public TicketPriority Priority { get; set; }
+    public TicketCategory Category { get; set; }
+
+    public Guid CustomerId { get; set; }
+    public Guid? AssignedAgentId { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public DateTime? ResolvedAt { get; set; }
+
+    public List<TicketComment> Comments { get; set; } = new();
+
 }
 
 public class TicketComment
 {
-    // TODO: Implementacja komentarza do ticketu
+    public Guid Id { get; set; }
+    public Guid TicketId { get; set; }
+    public Guid UserId { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+
+    public bool IsInternal { get; set; } // czy komentarz widoczny tylko dla agentow
+
+    public Ticket? Ticket { get; set; }
 }
 
 public enum TicketStatus
