@@ -2,5 +2,5 @@ namespace Shared.Messaging;
 
 public interface IMessagePublisher
 {
-    // TODO: Implementacja interfejsu do publikowania wiadomości
+    Task PublishAsync<T>(T message, string routingKey) where T : class;
 }

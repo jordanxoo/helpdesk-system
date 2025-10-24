@@ -2,5 +2,5 @@ namespace Shared.Events;
 
 public abstract record BaseEvent
 {
-    // TODO: Implementacja bazowego eventu
+    public DateTime Timestamp { get; init; }
 }
