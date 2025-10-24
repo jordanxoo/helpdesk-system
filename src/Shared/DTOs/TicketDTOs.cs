@@ -22,6 +22,10 @@ public record AddCommentRequest(
     bool IsInternal = false
 );
 
+public record ChangeStatusRequest(
+    string NewStatus
+);
+
 
 public record TicketDto(
     Guid Id,
