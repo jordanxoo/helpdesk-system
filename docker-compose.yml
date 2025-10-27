@@ -39,7 +39,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=helpdesk_auth;Username=postgres;Password=postgres"
     ports:
-      - "5001:8080"
+      - "5101:8080"
     depends_on:
       - postgres
     networks:
@@ -56,7 +56,7 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=helpdesk_tickets;Username=postgres;Password=postgres"
       MessagingSettings__HostName: rabbitmq
     ports:
-      - "5002:8080"
+      - "5102:8080"
     depends_on:
       - postgres
       - rabbitmq
@@ -74,7 +74,7 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=helpdesk_users;Username=postgres;Password=postgres"
       MessagingSettings__HostName: rabbitmq
     ports:
-      - "5003:8080"
+      - "5103:8080"
     depends_on:
       - postgres
       - rabbitmq
@@ -91,7 +91,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       MessagingSettings__HostName: rabbitmq
     ports:
-      - "5004:8080"
+      - "5104:8080"
     depends_on:
       - rabbitmq
     networks:
@@ -106,7 +106,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
     ports:
-      - "5000:8080"
+      - "5100:8080"
     depends_on:
       - auth-service
       - ticket-service
