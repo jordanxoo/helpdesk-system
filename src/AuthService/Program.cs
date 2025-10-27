@@ -138,7 +138,24 @@ builder.Logging.AddDebug();
 
 var app = builder.Build();
 
-// Inicjalizacja ról 
+// Database Migration - NAJPIERW migracje!
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    
+    try
+    {
+        dbContext.Database.Migrate();
+        app.Logger.LogInformation("Database migration completed successfully");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Database migration failed or not needed");
+    }
+}
+
+// Inicjalizacja ról - POTEM role (potrzebują bazy danych)
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
@@ -184,23 +201,6 @@ app.MapGet("/health", () => Results.Ok(new
     service = "AuthService",
     timestamp = DateTime.UtcNow 
 }));
-
-// Database Migration 
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-    
-    try
-    {
-        dbContext.Database.Migrate();
-        app.Logger.LogInformation("Database migration completed successfully");
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogWarning(ex, "Database migration failed or not needed");
-    }
-}
 
 app.Logger.LogInformation("AuthService started successfully");
 
