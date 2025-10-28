@@ -47,7 +47,10 @@ helpdesk-system/
 ### Uruchomienie Lokalne z Docker Compose
 
 ```bash
-# Zbudowanie i uruchomienie wszystkich serwisów
+# 1. Skopiuj plik konfiguracyjny (pierwszy raz)
+cp .env.example .env
+
+# 2. Zbudowanie i uruchomienie wszystkich serwisów
 docker-compose up --build
 
 # W tle
@@ -240,6 +243,7 @@ Swagger UI dostępny dla każdego serwisu:
 
 - **JWT Bearer Authentication** - Token-based auth z refresh tokens
 - **Role-based Authorization** - Customer, Agent, Administrator
+- **Unified JWT Config** - Wszystkie serwisy używają tego samego `JWT_SECRET` z `.env`
 - **SSL/TLS Termination** - AWS ALB w production, HTTP w kontenerach
 - **Database per Service** - Izolacja danych między serwisami
 - **Secrets Management** - AWS Secrets Manager (production)

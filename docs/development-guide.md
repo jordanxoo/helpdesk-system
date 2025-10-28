@@ -108,21 +108,43 @@ Projekt jest szkieletem gotowym do rozwoju. Wszystkie miejsca wymagające implem
 
 ### 7. Database Migrations
 
+**Auto-Migration (Development):**
+Wszystkie serwisy automatycznie wykonują migracje przy starcie w Development mode (`Program.cs`):
+
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<TicketDbContext>();
+    dbContext.Database.Migrate();  // Automatyczne migracje
+}
+```
+
+**Flow przy pierwszym uruchomieniu:**
+1. PostgreSQL kontener tworzy 3 puste bazy (`init-db.sql`)
+2. Każdy serwis wykonuje swoje migracje przy starcie
+3. Tabele są automatycznie tworzone
+
+**Tworzenie nowych migracji (gdy zmieniasz modele):**
 ```bash
 # AuthService
 cd src/AuthService
-dotnet ef migrations add InitialCreate
-dotnet ef database update
+dotnet ef migrations add MigrationName
+# Restart kontenera - migracja wykona się automatycznie
 
 # TicketService
 cd src/TicketService
-dotnet ef migrations add InitialCreate
-dotnet ef database update
+dotnet ef migrations add MigrationName
 
 # UserService
 cd src/UserService
-dotnet ef migrations add InitialCreate
-dotnet ef database update
+dotnet ef migrations add MigrationName
+```
+
+**Reset bazy od zera:**
+```bash
+docker-compose down -v  # Usuwa volumeny
+docker-compose up --build  # init-db.sql + auto-migrations uruchomią się ponownie
 ```
 
 ### 8. Docker Configuration
@@ -144,12 +166,17 @@ dotnet ef database update
 
 ## Workflow Developmentu
 
-1. **Wybierz komponent** do implementacji (np. AuthService)
-2. **Przeczytaj komentarze TODO** w plikach
-3. **Implementuj funkcjonalność** krok po kroku
-4. **Testuj lokalnie** bez Dockera
-5. **Testuj z Docker Compose**
-6. **Commit zmian** do git
+1. **Setup środowiska** (pierwszy raz):
+   ```bash
+   cp .env.example .env  # Skopiuj konfigurację
+   ```
+
+2. **Wybierz komponent** do implementacji (np. AuthService)
+3. **Przeczytaj komentarze TODO** w plikach
+4. **Implementuj funkcjonalność** krok po kroku
+5. **Testuj lokalnie** bez Dockera
+6. **Testuj z Docker Compose**
+7. **Commit zmian** do git
 
 ## Przykładowy Flow dla AuthService
 
