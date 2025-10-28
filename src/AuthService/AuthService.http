@@ -43,7 +43,7 @@ POST {{AuthService_HostAddress}}/api/auth/logout
 Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 
 ### 7. Przez API Gateway - Rejestracja
-POST {{ApiGateway}}/auth/register
+POST {{ApiGateway}}/api/auth/register
 Content-Type: application/json
 
 {
@@ -55,10 +55,14 @@ Content-Type: application/json
 }
 
 ### 8. Przez API Gateway - Logowanie
-POST {{ApiGateway}}/auth/login
+POST {{ApiGateway}}/api/auth/login
 Content-Type: application/json
 
 {
   "email": "anna.nowak@example.com",
   "password": "password456"
 }
+
+### 9. Przez API Gateway - Wymogi haseł
+GET {{ApiGateway}}/api/auth/password-requirements
+Accept: application/json

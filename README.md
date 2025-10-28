@@ -65,12 +65,20 @@ docker-compose down
 
 ### Dostęp do Serwisów
 
+**Przez API Gateway (ZALECANE dla frontendu):**
 - **API Gateway**: http://localhost:5100
-- **Auth Service**: http://localhost:5101
-- **Ticket Service**: http://localhost:5102
-- **User Service**: http://localhost:5103
+  - Auth: `http://localhost:5100/api/auth/*`
+  - Tickets: `http://localhost:5100/api/tickets/*`
+  - Users: `http://localhost:5100/api/users/*`
+
+**Bezpośredni dostęp do serwisów (dla testowania/debugowania):**
+- **Auth Service**: http://localhost:5101/api/auth/*
+- **Ticket Service**: http://localhost:5102/api/tickets/*
+- **User Service**: http://localhost:5103/api/users/*
 - **Notification Service**: http://localhost:5104
 - **RabbitMQ Management**: http://localhost:15672 (guest/guest)
+
+> **Uwaga:** Frontend powinien używać **wyłącznie API Gateway** (port 5100). Bezpośrednie porty serwisów są tylko do lokalnego testowania.
 
 ### Uruchomienie Lokalne bez Docker
 

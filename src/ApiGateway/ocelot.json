@@ -10,7 +10,9 @@
         }
       ],
       "UpstreamPathTemplate": "/api/auth/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "RouteIsCaseSensitive": false,
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/api/tickets/{everything}",
@@ -22,10 +24,9 @@
         }
       ],
       "UpstreamPathTemplate": "/api/tickets/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      }
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "RouteIsCaseSensitive": false,
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/api/users/{everything}",
@@ -37,10 +38,9 @@
         }
       ],
       "UpstreamPathTemplate": "/api/users/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      }
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "RouteIsCaseSensitive": false,
+      "Priority": 1
     }
   ],
   "GlobalConfiguration": {
