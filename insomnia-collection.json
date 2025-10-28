@@ -1,0 +1,433 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-10-28T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_helpdesk",
+      "_type": "workspace",
+      "name": "Helpdesk System",
+      "description": "Complete API collection for Helpdesk microservices system",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_helpdesk",
+      "_type": "environment",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:5100",
+        "auth_url": "http://localhost:5101",
+        "ticket_url": "http://localhost:5102",
+        "user_url": "http://localhost:5103",
+        "token": "",
+        "refresh_token": "",
+        "ticket_id": "",
+        "user_id": ""
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "auth_url", "ticket_url", "user_url", "token", "refresh_token", "ticket_id", "user_id"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1,
+      "parentId": "wrk_helpdesk"
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "name": "01 - Auth Service",
+      "description": "Authentication and authorization endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1,
+      "parentId": "wrk_helpdesk"
+    },
+    {
+      "_id": "req_register",
+      "_type": "request",
+      "name": "Register User",
+      "url": "{{ _.auth_url }}/api/auth/register",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"john.doe@helpdesk.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+48123456789\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "parentId": "fld_auth",
+      "description": "Register a new user as Customer. Returns JWT token automatically."
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "name": "Login",
+      "url": "{{ _.auth_url }}/api/auth/login",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"john.doe@helpdesk.com\",\n  \"password\": \"Password123!\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -2,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "parentId": "fld_auth",
+      "description": "Login with email and password. Copy token from response to environment variable."
+    },
+    {
+      "_id": "req_password_requirements",
+      "_type": "request",
+      "name": "Get Password Requirements",
+      "url": "{{ _.auth_url }}/api/auth/password-requirements",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -3,
+      "isPrivate": false,
+      "parentId": "fld_auth",
+      "description": "Get current password requirements for frontend validation"
+    },
+    {
+      "_id": "req_refresh_token",
+      "_type": "request",
+      "name": "Refresh Token",
+      "url": "{{ _.auth_url }}/api/auth/refresh-token",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refreshToken\": \"{{ _.refresh_token }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -4,
+      "isPrivate": false,
+      "parentId": "fld_auth",
+      "description": "Get new access token using refresh token"
+    },
+    {
+      "_id": "fld_tickets",
+      "_type": "request_group",
+      "name": "02 - Ticket Service",
+      "description": "Ticket management endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -2,
+      "parentId": "wrk_helpdesk"
+    },
+    {
+      "_id": "req_create_ticket",
+      "_type": "request",
+      "name": "Create Ticket",
+      "url": "{{ _.ticket_url }}/api/tickets",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Laptop nie włącza się\",\n  \"description\": \"Po naciśnięciu przycisku power laptop wydaje dziwny dźwięk i nie uruchamia systemu. Lampki migają przez 2 sekundy i gasną.\",\n  \"priority\": \"High\",\n  \"category\": \"Hardware\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1,
+      "isPrivate": false,
+      "parentId": "fld_tickets",
+      "description": "Create new ticket (Customer role required)"
+    },
+    {
+      "_id": "req_get_my_tickets",
+      "_type": "request",
+      "name": "Get My Tickets",
+      "url": "{{ _.ticket_url }}/api/tickets/my-tickets?page=1&pageSize=10",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -2,
+      "isPrivate": false,
+      "parentId": "fld_tickets",
+      "description": "Get tickets created by logged in user"
+    },
+    {
+      "_id": "req_get_ticket_by_id",
+      "_type": "request",
+      "name": "Get Ticket by ID",
+      "url": "{{ _.ticket_url }}/api/tickets/{{ _.ticket_id }}",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -3,
+      "isPrivate": false,
+      "parentId": "fld_tickets",
+      "description": "Get ticket details by ID (with comments)"
+    },
+    {
+      "_id": "req_search_tickets",
+      "_type": "request",
+      "name": "Search Tickets",
+      "url": "{{ _.ticket_url }}/api/tickets/search",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"searchTerm\": \"laptop\",\n  \"status\": \"New\",\n  \"priority\": \"High\",\n  \"category\": \"Hardware\",\n  \"page\": 1,\n  \"pageSize\": 10\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -4,
+      "isPrivate": false,
+      "parentId": "fld_tickets",
+      "description": "Search tickets with filters (Agent/Admin role)"
+    },
+    {
+      "_id": "req_add_comment",
+      "_type": "request",
+      "name": "Add Comment",
+      "url": "{{ _.ticket_url }}/api/tickets/{{ _.ticket_id }}/comments",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"content\": \"Sprawdziłem laptop - problem z dyskiem twardym. Wymaga wymiany.\",\n  \"isInternal\": false\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -5,
+      "isPrivate": false,
+      "parentId": "fld_tickets",
+      "description": "Add comment to ticket"
+    },
+    {
+      "_id": "req_change_status",
+      "_type": "request",
+      "name": "Change Ticket Status",
+      "url": "{{ _.ticket_url }}/api/tickets/{{ _.ticket_id }}/status",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"newStatus\": \"InProgress\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -6,
+      "isPrivate": false,
+      "parentId": "fld_tickets",
+      "description": "Change ticket status (Agent/Admin role). Options: New, Open, InProgress, Resolved, Closed"
+    },
+    {
+      "_id": "fld_users",
+      "_type": "request_group",
+      "name": "03 - User Service",
+      "description": "User management endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -3,
+      "parentId": "wrk_helpdesk"
+    },
+    {
+      "_id": "req_get_all_users",
+      "_type": "request",
+      "name": "Get All Users",
+      "url": "{{ _.user_url }}/api/users?page=1&pageSize=20",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1,
+      "isPrivate": false,
+      "parentId": "fld_users",
+      "description": "Get all users with pagination"
+    },
+    {
+      "_id": "req_get_user_by_id",
+      "_type": "request",
+      "name": "Get User by ID",
+      "url": "{{ _.user_url }}/api/users/{{ _.user_id }}",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -2,
+      "isPrivate": false,
+      "parentId": "fld_users",
+      "description": "Get user details by ID"
+    },
+    {
+      "_id": "req_search_users",
+      "_type": "request",
+      "name": "Search Users",
+      "url": "{{ _.user_url }}/api/users/search",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"searchTerm\": \"john\",\n  \"role\": \"Customer\",\n  \"isActive\": true,\n  \"page\": 1,\n  \"pageSize\": 10\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -3,
+      "isPrivate": false,
+      "parentId": "fld_users",
+      "description": "Search users with filters"
+    },
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "name": "04 - Health Checks",
+      "description": "Service health check endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -4,
+      "parentId": "wrk_helpdesk"
+    },
+    {
+      "_id": "req_health_auth",
+      "_type": "request",
+      "name": "Auth Service Health",
+      "url": "{{ _.auth_url }}/health",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1,
+      "isPrivate": false,
+      "parentId": "fld_health",
+      "description": "Check AuthService health and database connectivity"
+    },
+    {
+      "_id": "req_health_ticket",
+      "_type": "request",
+      "name": "Ticket Service Health",
+      "url": "{{ _.ticket_url }}/health",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -2,
+      "isPrivate": false,
+      "parentId": "fld_health",
+      "description": "Check TicketService health and database connectivity"
+    },
+    {
+      "_id": "req_health_user",
+      "_type": "request",
+      "name": "User Service Health",
+      "url": "{{ _.user_url }}/health",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -3,
+      "isPrivate": false,
+      "parentId": "fld_health",
+      "description": "Check UserService health and database connectivity"
+    }
+  ]
+}

@@ -105,7 +105,7 @@ public class TicketServiceImpl : ITicketService
         );
     }
 
-    public async Task<TicketDto> CreateAsync(Guid customerId, CreateTicketRequest request)
+    public async Task<TicketDto> CreateAsync(Guid customerId, string customerEmail, CreateTicketRequest request)
     {
         _logger.LogInformation("Creating new ticket for customer: {CustomerId}", customerId);
 
@@ -132,7 +132,7 @@ public class TicketServiceImpl : ITicketService
         var createdTicket = await _repository.CreateAsync(ticket);
         _logger.LogInformation("Ticket created successfully: {TicketId}", createdTicket.Id);
 
-        await PublishTicketCreatedEventAsync(createdTicket);
+        await PublishTicketCreatedEventAsync(createdTicket, customerEmail);
 
         return MapToDto(createdTicket);
     }
@@ -301,14 +301,17 @@ public class TicketServiceImpl : ITicketService
         );
     }
 
-    private async Task PublishTicketCreatedEventAsync(Ticket ticket)
+    private async Task PublishTicketCreatedEventAsync(Ticket ticket, string customerEmail)
     {
         var eventData = new TicketCreatedEvent
         {
             TicketId = ticket.Id,
             CustomerId = ticket.CustomerId,
+            CustomerEmail = customerEmail,
+            CustomerPhone = null, // Could be added to user profile later
             Title = ticket.Title,
             Priority = ticket.Priority.ToString(),
+            Category = ticket.Category.ToString(),
             Timestamp = DateTime.UtcNow
         };
 
@@ -323,7 +326,9 @@ public class TicketServiceImpl : ITicketService
         var eventData = new TicketAssignedEvent
         {
             TicketId = ticket.Id,
+            Title = ticket.Title,
             AgentId = ticket.AssignedAgentId.Value,
+            AgentEmail = $"agent-{ticket.AssignedAgentId.Value}@helpdesk.com", // TODO: Get from UserService
             CustomerId = ticket.CustomerId,
             Timestamp = DateTime.UtcNow
         };
@@ -340,6 +345,7 @@ public class TicketServiceImpl : ITicketService
             OldStatus = oldStatus,
             NewStatus = ticket.Status.ToString(),
             CustomerId = ticket.CustomerId,
+            CustomerEmail = $"customer-{ticket.CustomerId}@helpdesk.com", // TODO: Get from UserService or cache
             AgentId = ticket.AssignedAgentId,
             Timestamp = DateTime.UtcNow
         };
@@ -355,7 +361,10 @@ public class TicketServiceImpl : ITicketService
             TicketId = ticket.Id,
             CommentId = comment.Id,
             UserId = comment.UserId,
+            UserName = "User", // TODO: Get from context or UserService
+            Content = comment.Content,
             CustomerId = ticket.CustomerId,
+            RecipientEmail = $"customer-{ticket.CustomerId}@helpdesk.com", // TODO: Get from UserService
             IsInternal = comment.IsInternal,
             Timestamp = DateTime.UtcNow
         };

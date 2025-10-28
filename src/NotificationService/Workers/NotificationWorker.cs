@@ -1,10 +1,198 @@
+using System.Text.Json;
+using NotificationService.Services;
+using Shared.Events;
+using Shared.Messaging;
+
 namespace NotificationService.Workers;
 
 public class NotificationWorker : BackgroundService
 {
+    private readonly IMessageConsumer _messageConsumer;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<NotificationWorker> _logger;
+
+    public NotificationWorker(
+        IMessageConsumer messageConsumer,
+        IServiceProvider serviceProvider,
+        ILogger<NotificationWorker> logger)
+    {
+        _messageConsumer = messageConsumer;
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // TODO: Implementacja workera do konsumowania wiadomości z kolejki
-        await Task.CompletedTask;
+        _logger.LogInformation("NotificationWorker starting...");
+
+        try
+        {
+            var tasks = new List<Task>
+            {
+                ConsumeTicketCreatedEventsAsync(stoppingToken),
+                ConsumeTicketAssignedEventsAsync(stoppingToken),
+                ConsumeTicketStatusChangedEventsAsync(stoppingToken),
+                ConsumeCommentAddedEventsAsync(stoppingToken)
+            };
+
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "NotificationWorker encountered an error");
+            throw;
+        }
+    }
+
+    private async Task ConsumeTicketCreatedEventsAsync(CancellationToken stoppingToken)
+    {
+        await _messageConsumer.SubscribeAsync<TicketCreatedEvent>(
+            queueName: "ticket-created",
+            handler: async (ticketEvent) => await HandleTicketCreatedAsync(ticketEvent),
+            cancellationToken: stoppingToken);
+    }
+
+    private async Task ConsumeTicketAssignedEventsAsync(CancellationToken stoppingToken)
+    {
+        await _messageConsumer.SubscribeAsync<TicketAssignedEvent>(
+            queueName: "ticket-assigned",
+            handler: async (assignedEvent) => await HandleTicketAssignedAsync(assignedEvent),
+            cancellationToken: stoppingToken);
+    }
+
+    private async Task ConsumeTicketStatusChangedEventsAsync(CancellationToken stoppingToken)
+    {
+        await _messageConsumer.SubscribeAsync<TicketStatusChangedEvent>(
+            queueName: "ticket-status-changed",
+            handler: async (statusEvent) => await HandleTicketStatusChangedAsync(statusEvent),
+            cancellationToken: stoppingToken);
+    }
+
+    private async Task ConsumeCommentAddedEventsAsync(CancellationToken stoppingToken)
+    {
+        await _messageConsumer.SubscribeAsync<CommentAddedEvent>(
+            queueName: "comment-added",
+            handler: async (commentEvent) => await HandleCommentAddedAsync(commentEvent),
+            cancellationToken: stoppingToken);
+    }
+
+    private async Task<bool> HandleTicketCreatedAsync(TicketCreatedEvent ticketEvent)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Processing TicketCreatedEvent: TicketId={TicketId}, Customer={CustomerId}",
+                ticketEvent.TicketId, ticketEvent.CustomerId);
+
+            using var scope = _serviceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+            var smsService = scope.ServiceProvider.GetRequiredService<ISmsService>();
+
+    
+            await emailService.SendTicketCreatedNotificationAsync(
+                ticketEvent.CustomerEmail,
+                ticketEvent.TicketId.ToString(),
+                ticketEvent.Title);
+
+            if (!string.IsNullOrEmpty(ticketEvent.CustomerPhone))
+            {
+                await smsService.SendTicketCreatedSmsAsync(
+                    ticketEvent.CustomerPhone,
+                    ticketEvent.TicketId.ToString());
+            }
+
+            _logger.LogInformation("TicketCreatedEvent processed successfully for ticket {TicketId}", ticketEvent.TicketId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process TicketCreatedEvent for ticket {TicketId}", ticketEvent.TicketId);
+            return false;
+        }
+    }
+
+    private async Task<bool> HandleTicketAssignedAsync(TicketAssignedEvent assignedEvent)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Processing TicketAssignedEvent: TicketId={TicketId}, Agent={AgentId}",
+                assignedEvent.TicketId, assignedEvent.AgentId);
+
+            using var scope = _serviceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+            await emailService.SendTicketAssignedNotificationAsync(
+                assignedEvent.AgentEmail,
+                assignedEvent.TicketId.ToString(),
+                assignedEvent.Title);
+
+            _logger.LogInformation("TicketAssignedEvent processed successfully for ticket {TicketId}", assignedEvent.TicketId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process TicketAssignedEvent for ticket {TicketId}", assignedEvent.TicketId);
+            return false;
+        }
+    }
+
+    private async Task<bool> HandleTicketStatusChangedAsync(TicketStatusChangedEvent statusEvent)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Processing TicketStatusChangedEvent: TicketId={TicketId}, Status={OldStatus}->{NewStatus}",
+                statusEvent.TicketId, statusEvent.OldStatus, statusEvent.NewStatus);
+
+            using var scope = _serviceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+            await emailService.SendTicketStatusChangedNotificationAsync(
+                statusEvent.CustomerEmail,
+                statusEvent.TicketId.ToString(),
+                statusEvent.NewStatus);
+
+            _logger.LogInformation("TicketStatusChangedEvent processed successfully for ticket {TicketId}", statusEvent.TicketId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process TicketStatusChangedEvent for ticket {TicketId}", statusEvent.TicketId);
+            return false;
+        }
+    }
+
+    private async Task<bool> HandleCommentAddedAsync(CommentAddedEvent commentEvent)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Processing CommentAddedEvent: TicketId={TicketId}, Comment={CommentId}",
+                commentEvent.TicketId, commentEvent.CommentId);
+
+            using var scope = _serviceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+            await emailService.SendNewCommentNotificationAsync(
+                commentEvent.RecipientEmail,
+                commentEvent.TicketId.ToString(),
+                commentEvent.Content);
+
+            _logger.LogInformation("CommentAddedEvent processed successfully for ticket {TicketId}", commentEvent.TicketId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process CommentAddedEvent for ticket {TicketId}", commentEvent.TicketId);
+            return false;
+        }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("NotificationWorker stopping...");
+        await _messageConsumer.StopAsync();
+        await base.StopAsync(cancellationToken);
     }
 }

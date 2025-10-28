@@ -11,7 +11,7 @@ public interface ITicketService
     Task<TicketListResponse> SearchAsync(TicketFilterRequest filter);
     Task<TicketListResponse> GetMyTicketsAsync(Guid customerId, int page, int pageSize);
     Task<TicketListResponse> GetAssignedTicketsAsync(Guid agentId, int page, int pageSize);
-    Task<TicketDto> CreateAsync(Guid customerId, CreateTicketRequest request);
+    Task<TicketDto> CreateAsync(Guid customerId, string customerEmail, CreateTicketRequest request);
     Task<TicketDto> UpdateAsync(Guid id, UpdateTicketRequest request);
     Task<TicketDto> AssignToAgentAsync(Guid ticketId, Guid agentId);
     Task<TicketDto> ChangeStatusAsync(Guid ticketId, string newStatus);

@@ -72,10 +72,10 @@ docker-compose down
   - Users: `http://localhost:5100/api/users/*`
 
 **Bezpośredni dostęp do serwisów (dla testowania/debugowania):**
-- **Auth Service**: http://localhost:5101/api/auth/*
-- **Ticket Service**: http://localhost:5102/api/tickets/*
-- **User Service**: http://localhost:5103/api/users/*
-- **Notification Service**: http://localhost:5104
+- **Auth Service**: http://localhost:5101/api/auth/* (Swagger: /swagger, Health: /health)
+- **Ticket Service**: http://localhost:5102/api/tickets/* (Swagger: /swagger, Health: /health)
+- **User Service**: http://localhost:5103/api/users/* (Swagger: /swagger, Health: /health)
+- **Notification Service**: http://localhost:5104 (Swagger: /swagger, Health: /health)
 - **RabbitMQ Management**: http://localhost:15672 (guest/guest)
 
 > **Uwaga:** Frontend powinien używać **wyłącznie API Gateway** (port 5100). Bezpośrednie porty serwisów są tylko do lokalnego testowania.
@@ -111,18 +111,73 @@ dotnet ef migrations add InitialCreate --project src/AuthService
 dotnet ef database update --project src/AuthService
 ```
 
+## 📋 Changelog - Październik 2025
+
+### ✅ Zaimplementowano (28.10.2025)
+1. **RabbitMQ Integration** - Pełna komunikacja event-driven między serwisami
+   - Publisher w TicketService publikuje eventy
+   - Consumer w NotificationService odbiera i przetwarza eventy
+   - Exchange: `helpdesk-events` (Topic), persistent messages, auto-recovery
+
+2. **NotificationService - Kompletna implementacja**
+   - EmailService z SMTP (MailKit)
+   - SmsService (szkielet, gotowy do integracji z AWS SNS/Twilio)
+   - NotificationWorker (BackgroundService) konsumujący 4 typy eventów
+   - Automatyczne wysyłanie powiadomień o ticketach
+
+3. **UserService - Rozszerzenie funkcjonalności**
+   - JWT Authentication z role-based authorization
+   - Kompletny UsersController z 10 endpointami
+   - GET /api/users - lista z paginacją (Agent/Admin)
+   - POST /api/users/search - wyszukiwanie z filtrami
+   - GET /api/users/me - profil zalogowanego użytkownika
+   - POST/PUT/DELETE - zarządzanie użytkownikami (Admin)
+
+4. **Konfiguracja portów (launchSettings.json)**
+   - AuthService: 5101
+   - TicketService: 5102
+   - UserService: 5103
+   - NotificationService: 5104
+
+5. **Health Checks - JSON response**
+   - Wszystkie serwisy zwracają ujednolicony format JSON
+   - Status, service name, timestamp, checks (PostgreSQL/RabbitMQ)
+
+### 📁 Dodane pliki
+- `insomnia-collection.json` - Gotowa kolekcja API do testowania
+- `src/NotificationService/Services/*` - Email/SMS services
+- `src/NotificationService/Workers/NotificationWorker.cs`
+- `src/Shared/Messaging/RabbitMqPublisher.cs`
+- `src/Shared/Messaging/RabbitMqConsumer.cs`
+- `src/*/Properties/launchSettings.json` - Wszystkie serwisy
+
+### 🔧 Zaktualizowane
+- Shared Events - Rozszerzone o dodatkowe pola (email, phone, content)
+- TicketService - Publikowanie eventów po każdej akcji
+- appsettings.json - Dodano MessagingSettings dla RabbitMQ
+- `helpdesk_users` - UserService
+
+### Migracje Entity Framework
+
+```bash
+# Dodanie migracji
+dotnet ef migrations add InitialCreate --project src/AuthService
+
+# Aktualizacja bazy danych
+dotnet ef database update --project src/AuthService
+```
+
 ## 📊 Message Queue
 
 System używa RabbitMQ dla komunikacji event-driven między serwisami:
 
 ### Queues:
-- `ticket-created` - Nowy ticket utworzony
-- `ticket-assigned` - Ticket przypisany do agenta
-- `ticket-status-changed` - Status ticketu zmieniony
-- `comment-added` - Komentarz dodany
-- `user-registered` - Nowy użytkownik zarejestrowany
-- `send-email` - Wysyłka emaila
-- `send-sms` - Wysyłka SMS
+- `ticket-created` - Nowy ticket utworzony → wysyłka email/SMS do klienta
+- `ticket-assigned` - Ticket przypisany do agenta → email do agenta
+- `ticket-status-changed` - Status ticketu zmieniony → email do klienta
+- `comment-added` - Komentarz dodany → email z powiadomieniem
+
+**RabbitMQ Management**: http://localhost:15672 (guest/guest)
 
 ## ☁️ AWS Deployment
 

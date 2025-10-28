@@ -10,6 +10,7 @@ using TicketService.Data;
 using TicketService.Repositories;
 using TicketService.Services;
 using Shared.Messaging;
+using Shared.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,8 +33,10 @@ builder.Services.AddDbContext<TicketDbContext>(options =>
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ITicketService, TicketServiceImpl>();
 
-// TODO: Implementacja RabbitMQ/SQS publisher (na razie mock)
-builder.Services.AddSingleton<IMessagePublisher, MockMessagePublisher>();
+builder.Services.Configure<MessagingSettings>(
+    builder.Configuration.GetSection("MessagingSettings"));
+
+builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -118,14 +121,12 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger in all environments for development and testing
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Ticket Service API v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Ticket Service API v1");
+});
 
 // HTTPS Redirection - nie potrzebne (ALB robi SSL termination w AWS)
 // app.UseHttpsRedirection(); // USUNIĘTE

@@ -116,6 +116,7 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<TicketDto>> Create([FromBody] CreateTicketRequest request)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var emailClaim = User.FindFirst(ClaimTypes.Email)?.Value ?? "unknown@email.com";
         
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
         {
@@ -124,7 +125,7 @@ public class TicketsController : ControllerBase
 
         try
         {
-            var ticket = await _ticketService.CreateAsync(userId, request);
+            var ticket = await _ticketService.CreateAsync(userId, emailClaim, request);
             return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
         }
         catch (ArgumentException ex)
