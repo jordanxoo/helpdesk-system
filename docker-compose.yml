@@ -6,10 +6,10 @@ services:
     image: postgres:16-alpine
     container_name: helpdesk-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -26,11 +26,11 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: helpdesk-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
     networks:
       - helpdesk-network
     healthcheck:
@@ -47,9 +47,14 @@ services:
     container_name: helpdesk-auth
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=helpdesk_auth;Username=postgres;Password=postgres"
+      ConnectionStrings__DefaultConnection: ${AUTH_DB_CONNECTION}
+      JwtSettings__SecretKey: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
+      JwtSettings__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
+      JwtSettings__RefreshTokenExpirationDays: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS}
     ports:
-      - "5101:8080"
+      - "${AUTH_SERVICE_PORT}:8080"
     restart: on-failure
     depends_on:
       postgres:
@@ -65,10 +70,16 @@ services:
     container_name: helpdesk-tickets
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=helpdesk_tickets;Username=postgres;Password=postgres"
-      MessagingSettings__HostName: rabbitmq
+      ConnectionStrings__DefaultConnection: ${TICKET_DB_CONNECTION}
+      MessagingSettings__HostName: ${RABBITMQ_HOST}
+      MessagingSettings__UserName: ${RABBITMQ_USER}
+      MessagingSettings__Password: ${RABBITMQ_PASSWORD}
+      MessagingSettings__ExchangeName: ${RABBITMQ_EXCHANGE}
+      JwtSettings__SecretKey: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
     ports:
-      - "5102:8080"
+      - "${TICKET_SERVICE_PORT}:8080"
     restart: on-failure
     depends_on:
       postgres:
@@ -86,10 +97,13 @@ services:
     container_name: helpdesk-users
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=helpdesk_users;Username=postgres;Password=postgres"
-      MessagingSettings__HostName: rabbitmq
+      ConnectionStrings__DefaultConnection: ${USER_DB_CONNECTION}
+      MessagingSettings__HostName: ${RABBITMQ_HOST}
+      JwtSettings__SecretKey: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
     ports:
-      - "5103:8080"
+      - "${USER_SERVICE_PORT}:8080"
     restart: on-failure
     depends_on:
       postgres:
@@ -107,9 +121,17 @@ services:
     container_name: helpdesk-notifications
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      MessagingSettings__HostName: rabbitmq
+      MessagingSettings__HostName: ${RABBITMQ_HOST}
+      MessagingSettings__UserName: ${RABBITMQ_USER}
+      MessagingSettings__Password: ${RABBITMQ_PASSWORD}
+      MessagingSettings__ExchangeName: ${RABBITMQ_EXCHANGE}
+      EmailSettings__SmtpServer: ${SMTP_SERVER}
+      EmailSettings__SmtpPort: ${SMTP_PORT}
+      EmailSettings__SenderEmail: ${SMTP_SENDER_EMAIL}
+      EmailSettings__SenderName: ${SMTP_SENDER_NAME}
+      EmailSettings__SmtpPassword: ${SMTP_PASSWORD}
     ports:
-      - "5104:8080"
+      - "${NOTIFICATION_SERVICE_PORT}:8080"
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -126,7 +148,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
     ports:
-      - "5100:8080"
+      - "${API_GATEWAY_PORT}:8080"
     depends_on:
       auth-service:
         condition: service_started

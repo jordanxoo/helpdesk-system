@@ -76,7 +76,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettingsObj?.Issuer,
         ValidAudience = jwtSettingsObj?.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettingsObj?.Secret ?? throw new InvalidOperationException("JWT Secret not configured"))
+            Encoding.UTF8.GetBytes(jwtSettingsObj?.SecretKey ?? throw new InvalidOperationException("JWT SecretKey not configured"))
         ),
         ClockSkew = TimeSpan.Zero
     };
