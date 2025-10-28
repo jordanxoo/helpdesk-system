@@ -15,6 +15,11 @@ services:
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - helpdesk-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # RabbitMQ Message Broker
   rabbitmq:
@@ -28,6 +33,11 @@ services:
       - "15672:15672"
     networks:
       - helpdesk-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Auth Service
   auth-service:
@@ -40,8 +50,10 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=helpdesk_auth;Username=postgres;Password=postgres"
     ports:
       - "5101:8080"
+    restart: on-failure
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - helpdesk-network
 
@@ -57,9 +69,12 @@ services:
       MessagingSettings__HostName: rabbitmq
     ports:
       - "5102:8080"
+    restart: on-failure
     depends_on:
-      - postgres
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - helpdesk-network
 
@@ -75,9 +90,12 @@ services:
       MessagingSettings__HostName: rabbitmq
     ports:
       - "5103:8080"
+    restart: on-failure
     depends_on:
-      - postgres
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - helpdesk-network
 
@@ -92,8 +110,10 @@ services:
       MessagingSettings__HostName: rabbitmq
     ports:
       - "5104:8080"
+    restart: on-failure
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     networks:
       - helpdesk-network
 
@@ -108,9 +128,12 @@ services:
     ports:
       - "5100:8080"
     depends_on:
-      - auth-service
-      - ticket-service
-      - user-service
+      auth-service:
+        condition: service_started
+      ticket-service:
+        condition: service_started
+      user-service:
+        condition: service_started
     networks:
       - helpdesk-network
 

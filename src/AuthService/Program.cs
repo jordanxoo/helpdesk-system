@@ -19,7 +19,16 @@ var jwtSettingsObj = jwtSettings.Get<JwtSettings>();
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__ef_migrations_history", "public")
+        npgsqlOptions =>
+        {
+            npgsqlOptions.MigrationsHistoryTable("__ef_migrations_history", "public");
+            // Retry logic - automatyczne ponawianie połączenia przy przejściowych błędach
+            // Kluczowe dla odporności w produkcji (np. restart bazy, problemy sieciowe)
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null);
+        }
     )
 );
 

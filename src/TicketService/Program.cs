@@ -13,7 +13,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Konfiguracja PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<TicketDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(
+        connectionString,
+        npgsqlOptions =>
+        {
+            // Retry logic - automatyczne ponawianie połączenia przy przejściowych błędach
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null);
+        }
+    ));
 
 // Dependency Injection
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
