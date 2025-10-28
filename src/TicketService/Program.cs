@@ -114,7 +114,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// HTTPS Redirection - nie potrzebne (ALB robi SSL termination w AWS)
+// app.UseHttpsRedirection(); // USUNIĘTE
 
 app.UseCors("AllowFrontend");
 

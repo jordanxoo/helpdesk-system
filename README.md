@@ -161,10 +161,14 @@ Swagger UI dostępny dla każdego serwisu:
 
 ## 🔐 Security
 
-- JWT Bearer Authentication
-- Role-based Authorization (Customer, Agent, Administrator)
-- HTTPS w production
-- Secrets w AWS Secrets Manager (production)
+- **JWT Bearer Authentication** - Token-based auth z refresh tokens
+- **Role-based Authorization** - Customer, Agent, Administrator
+- **SSL/TLS Termination** - AWS ALB w production, HTTP w kontenerach
+- **Database per Service** - Izolacja danych między serwisami
+- **Secrets Management** - AWS Secrets Manager (production)
+
+> **Uwaga:** Kontenery używają HTTP (port 8080). W production AWS ALB obsługuje HTTPS 
+> i przekazuje ruch do kontenerów przez HTTP w prywatnej sieci VPC.
 
 ## 📚 Technologie
 

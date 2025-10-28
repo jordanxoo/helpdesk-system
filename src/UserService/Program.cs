@@ -76,8 +76,8 @@ if (app.Environment.IsDevelopment())
 // CORS
 app.UseCors("AllowAll");
 
-// HTTPS Redirection
-app.UseHttpsRedirection();
+// HTTPS Redirection - nie potrzebne (ALB robi SSL termination w AWS)
+// app.UseHttpsRedirection(); // USUNIĘTE
 
 // Authentication & Authorization (TODO: będzie skonfigurowane później z JWT)
 app.UseAuthentication();

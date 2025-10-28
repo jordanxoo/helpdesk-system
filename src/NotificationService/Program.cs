@@ -16,7 +16,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// HTTPS Redirection - nie potrzebne (ALB robi SSL termination w AWS)
+// app.UseHttpsRedirection(); // USUNIĘTE
+
 app.MapControllers();
 
 app.Run();

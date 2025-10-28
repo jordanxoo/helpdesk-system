@@ -185,8 +185,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
-// HTTPS Redirection
-app.UseHttpsRedirection();
+// HTTPS Redirection - nie potrzebne, bo:
+// - W Development/Docker: używamy HTTP
+// - W Production/AWS: ALB robi SSL termination, kontenery dostają HTTP
+// app.UseHttpsRedirection(); // USUNIĘTE
 
 app.UseAuthentication();
 app.UseAuthorization();

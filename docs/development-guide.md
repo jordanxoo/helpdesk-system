@@ -272,3 +272,50 @@ Po zakończeniu implementacji szkieletu:
 8. Load testing
 9. Security audit
 10. Production deployment na AWS
+
+## 🔒 Ważne Informacje o Bezpieczeństwie
+
+### HTTPS i SSL/TLS
+
+**Kontenery NIE używają `UseHttpsRedirection()`** - to zamierzone!
+
+#### Dlaczego?
+
+1. **Development/Docker:**
+   - Kontenery komunikują się przez HTTP w sieci Docker
+   - Brak potrzeby szyfrowania localhost
+   - Prostsze debugowanie
+
+2. **Production/AWS:**
+   - AWS ALB (Application Load Balancer) obsługuje SSL/TLS termination
+   - Certyfikat SSL zarządzany przez AWS Certificate Manager
+   - ALB przekazuje ruch do kontenerów przez HTTP w bezpiecznej sieci VPC
+
+#### Architektura bezpieczeństwa w AWS:
+
+```
+Internet → HTTPS :443 
+          ↓
+       AWS ALB (SSL Cert)
+          ↓ SSL Termination
+          ↓
+       HTTP :8080 (VPC - prywatna)
+          ↓
+       ECS Containers
+```
+
+#### Ustawienie JWT:
+
+```csharp
+options.RequireHttpsMetadata = false; // ✅ Prawidłowe dla SSL termination
+```
+
+To pozwala na walidację tokenów JWT przez HTTP, bo HTTPS jest już obsłużony przez ALB.
+
+**❌ NIE dodawaj:**
+- `app.UseHttpsRedirection()` - spowoduje redirect loops
+- `options.RequireHttpsMetadata = true` - będzie blokować w Docker/AWS
+
+Więcej: `docs/architecture.md` → sekcja "Bezpieczeństwo i HTTPS"
+
+```
