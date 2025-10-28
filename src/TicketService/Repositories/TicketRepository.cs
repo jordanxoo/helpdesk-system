@@ -111,17 +111,21 @@ public class TicketRepository : ITicketRepository
 
     public async Task<List<Ticket>> GetByAgentIdAsync(Guid agentId, int page, int pageSize)
     {
-        return await _context.Tickets.Include(t => t.Comments).
-        Where(t => t.AssignedAgentId == agentId)
-        .OrderByDescending(t => t.CreatedAt).Skip((page - 1) * pageSize)
-        .Take(pageSize).ToListAsync();
+        return await _context.Tickets
+            .Where(t => t.AssignedAgentId == agentId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
     }
     public async Task<List<Ticket>> GetByCustomerIdAsync(Guid customerId, int page, int pageSize)
     {
-        return await _context.Tickets.Include(t => t.Comments).
-        Where(t => t.CustomerId == customerId)
-        .OrderByDescending(t => t.CreatedAt).Skip((page - 1) * page)
-        .Take(pageSize).ToListAsync();
+        return await _context.Tickets
+            .Where(t => t.CustomerId == customerId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
     }
 
     public async Task<Ticket> CreateAsync(Ticket ticket)
