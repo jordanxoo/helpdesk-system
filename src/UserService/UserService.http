@@ -1,0 +1,59 @@
+@UserService_HostAddress = http://localhost:5103
+@ApiGateway = http://localhost:5100
+
+### 1. Health Check
+GET {{UserService_HostAddress}}/health
+Accept: application/json
+
+### 2. Pobierz profil użytkownika (wymaga auth)
+GET {{UserService_HostAddress}}/api/users/profile
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 3. Aktualizuj profil użytkownika (wymaga auth)
+PUT {{UserService_HostAddress}}/api/users/profile
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+{
+  "firstName": "Jan",
+  "lastName": "Kowalski",
+  "phoneNumber": "+48123456789"
+}
+
+### 4. Pobierz użytkownika po ID (wymaga auth - Agent/Admin)
+GET {{UserService_HostAddress}}/api/users/550e8400-e29b-41d4-a716-446655440000
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 5. Pobierz wszystkich użytkowników (wymaga auth - Admin)
+GET {{UserService_HostAddress}}/api/users
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 6. Usuń użytkownika (wymaga auth - Admin)
+DELETE {{UserService_HostAddress}}/api/users/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### ====== PRZEZ API GATEWAY ======
+
+### 7. Przez Gateway - Pobierz profil
+GET {{ApiGateway}}/api/users/profile
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 8. Przez Gateway - Aktualizuj profil
+PUT {{ApiGateway}}/api/users/profile
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+{
+  "firstName": "Anna",
+  "lastName": "Nowak",
+  "phoneNumber": "+48987654321"
+}
+
+### 9. Przez Gateway - Pobierz wszystkich użytkowników (Admin)
+GET {{ApiGateway}}/api/users
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE

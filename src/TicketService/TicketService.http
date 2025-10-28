@@ -1,0 +1,68 @@
+@TicketService_HostAddress = http://localhost:5102
+@ApiGateway = http://localhost:5100
+
+### 1. Health Check
+GET {{TicketService_HostAddress}}/health
+Accept: application/json
+
+### 2. Utwórz nowy ticket (wymaga auth)
+POST {{TicketService_HostAddress}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+{
+  "title": "Problem z logowaniem",
+  "description": "Nie mogę się zalogować do systemu",
+  "priority": "High",
+  "category": "Technical"
+}
+
+### 3. Pobierz wszystkie tickety (wymaga auth)
+GET {{TicketService_HostAddress}}/api/tickets
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 4. Pobierz ticket po ID (wymaga auth)
+GET {{TicketService_HostAddress}}/api/tickets/1
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 5. Aktualizuj ticket (wymaga auth - Agent/Admin)
+PUT {{TicketService_HostAddress}}/api/tickets/1
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+{
+  "title": "Problem z logowaniem - AKTUALIZACJA",
+  "description": "Rozwiązane - zresetowano hasło",
+  "status": "Resolved",
+  "priority": "High"
+}
+
+### 6. Usuń ticket (wymaga auth - Admin)
+DELETE {{TicketService_HostAddress}}/api/tickets/1
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### ====== PRZEZ API GATEWAY ======
+
+### 7. Przez Gateway - Utwórz ticket
+POST {{ApiGateway}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+{
+  "title": "Pytanie o funkcjonalność",
+  "description": "Jak dodać nowego użytkownika?",
+  "priority": "Medium",
+  "category": "Question"
+}
+
+### 8. Przez Gateway - Pobierz wszystkie tickety
+GET {{ApiGateway}}/api/tickets
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 9. Przez Gateway - Pobierz ticket po ID
+GET {{ApiGateway}}/api/tickets/1
+Accept: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE

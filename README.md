@@ -197,9 +197,17 @@ Response:
 
 ### Testowanie API
 
-Każdy serwis ma plik `.http` z przykładowymi requestami:
-- `src/AuthService/AuthService.http` - Rejestracja, logowanie, refresh token
-- Otwórz w VS Code i kliknij "Send Request" (wymaga REST Client extension)
+**Swagger UI (dokumentacja + testowanie):**
+- Auth: http://localhost:5101/swagger
+- Tickets: http://localhost:5102/swagger
+- Users: http://localhost:5103/swagger
+
+**Pliki `.http` (opcjonalnie - dla VS Code REST Client):**
+- `src/AuthService/AuthService.http`
+- `src/TicketService/TicketService.http`
+- `src/UserService/UserService.http`
+
+> **Frontend powinien używać wyłącznie API Gateway (port 5100)!**
 
 > **Uwaga:** Kontenery używają HTTP (port 8080). W production AWS ALB obsługuje HTTPS 
 > i przekazuje ruch do kontenerów przez HTTP w prywatnej sieci VPC.
