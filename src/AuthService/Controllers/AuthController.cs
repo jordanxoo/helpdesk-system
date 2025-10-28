@@ -28,7 +28,7 @@ public class AuthController : ControllerBase
         _logger = logger;
     }
 
-    /// < summary>
+    /// <summary>
     /// rejestracja nowego uzytkownika
     /// </summary>
     [HttpPost("register")]
@@ -57,7 +57,7 @@ public class AuthController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        var result = await _userManager.CreateAsync(user);
+        var result = await _userManager.CreateAsync(user, request.Password);
 
         if (!result.Succeeded)
         {
@@ -167,5 +167,24 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logged out successfully" });
     }
 
+    /// <summary>
+    /// Pobiera wymogi haseł dla walidacji po stronie frontendu
+    /// </summary>
+    [HttpGet("password-requirements")]
+    [ProducesResponseType(typeof(PasswordRequirements), StatusCodes.Status200OK)]
+    public ActionResult<PasswordRequirements> GetPasswordRequirements()
+    {
+        var passwordOptions = _userManager.Options.Password;
+        
+        var requirements = new PasswordRequirements
+        {
+            MinimumLength = passwordOptions.RequiredLength,
+            RequireDigit = passwordOptions.RequireDigit,
+            RequireLowercase = passwordOptions.RequireLowercase,
+            RequireUppercase = passwordOptions.RequireUppercase,
+            RequireNonAlphanumeric = passwordOptions.RequireNonAlphanumeric
+        };
 
+        return Ok(requirements);
+    }
 }

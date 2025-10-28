@@ -35,10 +35,10 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 // Konfiguracja ASP.NET Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    // Password settings
-    options.Password.RequireDigit = true;
+    // Password settings - proste wymogi dla developmentu
+    options.Password.RequireDigit = false;
     options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
+    options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
     

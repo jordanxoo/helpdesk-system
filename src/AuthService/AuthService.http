@@ -1,6 +1,64 @@
 @AuthService_HostAddress = http://localhost:5101
+@ApiGateway = http://localhost:5100
 
-GET {{AuthService_HostAddress}}/weatherforecast/
+### 1. Health Check
+GET {{AuthService_HostAddress}}/health
 Accept: application/json
 
-###
+### 2. Sprawdź wymogi haseł
+GET {{AuthService_HostAddress}}/api/auth/password-requirements
+Accept: application/json
+
+### 3. Rejestracja nowego użytkownika (Customer)
+POST {{AuthService_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "jan.kowalski@example.com",
+  "password": "password123",
+  "firstName": "Jan",
+  "lastName": "Kowalski",
+  "phoneNumber": "+48123456789"
+}
+
+### 4. Logowanie
+POST {{AuthService_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jan.kowalski@example.com",
+  "password": "password123"
+}
+
+### 5. Refresh Token (użyj refreshToken z odpowiedzi logowania)
+POST {{AuthService_HostAddress}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "YOUR_REFRESH_TOKEN_HERE"
+}
+
+### 6. Logout
+POST {{AuthService_HostAddress}}/api/auth/logout
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+### 7. Przez API Gateway - Rejestracja
+POST {{ApiGateway}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "anna.nowak@example.com",
+  "password": "password456",
+  "firstName": "Anna",
+  "lastName": "Nowak",
+  "phoneNumber": "+48987654321"
+}
+
+### 8. Przez API Gateway - Logowanie
+POST {{ApiGateway}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "anna.nowak@example.com",
+  "password": "password456"
+}

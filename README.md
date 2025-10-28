@@ -166,6 +166,32 @@ Swagger UI dostępny dla każdego serwisu:
 - **SSL/TLS Termination** - AWS ALB w production, HTTP w kontenerach
 - **Database per Service** - Izolacja danych między serwisami
 - **Secrets Management** - AWS Secrets Manager (production)
+- **Password Requirements** - Minimum 6 znaków, mała litera wymagana
+
+### Password Requirements API
+
+Frontend może pobrać aktualne wymogi haseł dynamicznie:
+```bash
+GET http://localhost:5101/api/auth/password-requirements
+```
+
+Response:
+```json
+{
+  "minimumLength": 6,
+  "requireDigit": false,
+  "requireLowercase": true,
+  "requireUppercase": false,
+  "requireNonAlphanumeric": false,
+  "description": "Hasło musi mieć minimum 6 znaków, małą literę."
+}
+```
+
+### Testowanie API
+
+Każdy serwis ma plik `.http` z przykładowymi requestami:
+- `src/AuthService/AuthService.http` - Rejestracja, logowanie, refresh token
+- Otwórz w VS Code i kliknij "Send Request" (wymaga REST Client extension)
 
 > **Uwaga:** Kontenery używają HTTP (port 8080). W production AWS ALB obsługuje HTTPS 
 > i przekazuje ruch do kontenerów przez HTTP w prywatnej sieci VPC.
