@@ -1,3 +1,4 @@
+using Shared.Constants;
 using Shared.DTOs;
 using Shared.Models;
 using Shared.Events;
@@ -310,7 +311,7 @@ public class TicketServiceImpl : ITicketService
             Timestamp = DateTime.UtcNow
         };
 
-        await _messagePublisher.PublishAsync(eventData, "ticket-created");
+        await _messagePublisher.PublishAsync(eventData, RoutingKeys.TicketCreated);
         _logger.LogInformation("Published TicketCreatedEvent for ticket {TicketId}", ticket.Id);
     }
 
@@ -326,7 +327,7 @@ public class TicketServiceImpl : ITicketService
             Timestamp = DateTime.UtcNow
         };
 
-        await _messagePublisher.PublishAsync(eventData, "ticket-assigned");
+        await _messagePublisher.PublishAsync(eventData, RoutingKeys.TicketAssigned);
         _logger.LogInformation("Published TicketAssignedEvent for ticket {TicketId}", ticket.Id);
     }
 
@@ -342,7 +343,7 @@ public class TicketServiceImpl : ITicketService
             Timestamp = DateTime.UtcNow
         };
 
-        await _messagePublisher.PublishAsync(eventData, "ticket-status-changed");
+        await _messagePublisher.PublishAsync(eventData, RoutingKeys.TicketStatusChanged);
         _logger.LogInformation("Published TicketStatusChangedEvent for ticket {TicketId}", ticket.Id);
     }
 
@@ -359,7 +360,7 @@ public class TicketServiceImpl : ITicketService
             Timestamp = DateTime.UtcNow
         };
 
-        await _messagePublisher.PublishAsync(eventData, "comment-added");
+        await _messagePublisher.PublishAsync(eventData, RoutingKeys.CommentAdded);
         _logger.LogInformation("Published CommentAddedEvent for ticket {TicketId}", ticket.Id);
     }
 }

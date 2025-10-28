@@ -1,5 +1,6 @@
 using System.Text.Json;
 using NotificationService.Services;
+using Shared.Constants;
 using Shared.Events;
 using Shared.Messaging;
 
@@ -47,7 +48,7 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeTicketCreatedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<TicketCreatedEvent>(
-            queueName: "ticket-created",
+            queueName: RoutingKeys.TicketCreated,
             handler: async (ticketEvent) => await HandleTicketCreatedAsync(ticketEvent),
             cancellationToken: stoppingToken);
     }
@@ -55,7 +56,7 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeTicketAssignedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<TicketAssignedEvent>(
-            queueName: "ticket-assigned",
+            queueName: RoutingKeys.TicketAssigned,
             handler: async (assignedEvent) => await HandleTicketAssignedAsync(assignedEvent),
             cancellationToken: stoppingToken);
     }
@@ -63,7 +64,7 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeTicketStatusChangedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<TicketStatusChangedEvent>(
-            queueName: "ticket-status-changed",
+            queueName: RoutingKeys.TicketStatusChanged,
             handler: async (statusEvent) => await HandleTicketStatusChangedAsync(statusEvent),
             cancellationToken: stoppingToken);
     }
@@ -71,7 +72,7 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeCommentAddedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<CommentAddedEvent>(
-            queueName: "comment-added",
+            queueName: RoutingKeys.CommentAdded,
             handler: async (commentEvent) => await HandleCommentAddedAsync(commentEvent),
             cancellationToken: stoppingToken);
     }

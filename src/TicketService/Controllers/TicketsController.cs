@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Constants;
 using Shared.DTOs;
 using TicketService.Services;
 using System.Security.Claims;
@@ -68,7 +69,7 @@ public class TicketsController : ControllerBase
     /// Pobiera moje tickety (dla zalogowanego customera)
     /// </summary>
     [HttpGet("my-tickets")]
-    [Authorize(Roles = "Customer")]
+    [Authorize(Roles = UserRoles.Customer)]
     [ProducesResponseType(typeof(TicketListResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<TicketListResponse>> GetMyTickets(
         [FromQuery] int page = 1,
@@ -110,7 +111,7 @@ public class TicketsController : ControllerBase
     /// Tworzy nowy ticket
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Customer")]
+    [Authorize(Roles = UserRoles.Customer)]
     [ProducesResponseType(typeof(TicketDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TicketDto>> Create([FromBody] CreateTicketRequest request)
@@ -208,7 +209,7 @@ public class TicketsController : ControllerBase
     /// Usuwa ticket
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = UserRoles.Administrator)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)

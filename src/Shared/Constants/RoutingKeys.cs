@@ -1,0 +1,36 @@
+namespace Shared.Constants;
+
+/// <summary>
+/// Centralized routing keys for RabbitMQ events.
+/// Used by both publishers (TicketService) and consumers (NotificationService).
+/// </summary>
+public static class RoutingKeys
+{
+    /// <summary>
+    /// Event published when a new ticket is created.
+    /// Publisher: TicketService
+    /// Consumers: NotificationService
+    /// </summary>
+    public const string TicketCreated = "ticket-created";
+
+    /// <summary>
+    /// Event published when a ticket is assigned to an agent.
+    /// Publisher: TicketService
+    /// Consumers: NotificationService
+    /// </summary>
+    public const string TicketAssigned = "ticket-assigned";
+
+    /// <summary>
+    /// Event published when a ticket status changes.
+    /// Publisher: TicketService
+    /// Consumers: NotificationService
+    /// </summary>
+    public const string TicketStatusChanged = "ticket-status-changed";
+
+    /// <summary>
+    /// Event published when a comment is added to a ticket.
+    /// Publisher: TicketService
+    /// Consumers: NotificationService
+    /// </summary>
+    public const string CommentAdded = "comment-added";
+}

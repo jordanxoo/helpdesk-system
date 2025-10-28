@@ -6,7 +6,7 @@ public record CreateUserRequest(
     string FirstName,
     string LastName,
     string PhoneNumber,
-    string Role  // "Customer", "Agent", "Administrator"
+    string Role  // Use UserRoles constants: Customer, Agent, Administrator
 );
 
 

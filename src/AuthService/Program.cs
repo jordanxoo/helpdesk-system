@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Shared.Configuration;
+using Shared.Constants;
 using Shared.Models;
 using AuthService.Data;
 using AuthService.Services;
@@ -175,7 +176,7 @@ if (app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    var roles = new[] { "Customer", "Agent", "Administrator" };
+    var roles = new[] { UserRoles.Customer, UserRoles.Agent, UserRoles.Administrator };
     
     foreach (var role in roles)
     {
