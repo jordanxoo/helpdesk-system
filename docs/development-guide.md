@@ -175,7 +175,7 @@ dotnet ef migrations add InitialCreate
 dotnet run
 
 # 7. Test z Postman/curl
-curl -X POST http://localhost:5001/api/auth/register \
+curl -X POST http://localhost:5101/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"Test123!"}'
 ```

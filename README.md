@@ -7,11 +7,11 @@ System Helpdesk zbudowany jako rozproszona aplikacja mikroservisowa, gotowa do d
 System składa się z następujących mikroservisów:
 
 ### Mikroservisy
-- **AuthService** (Port 5001) - Uwierzytelnianie i autoryzacja użytkowników (JWT, Identity)
-- **TicketService** (Port 5002) - Zarządzanie zgłoszeniami helpdesk
-- **UserService** (Port 5003) - Zarządzanie profilami użytkowników
-- **NotificationService** (Port 5004) - Wysyłanie powiadomień (email, SMS)
-- **ApiGateway** (Port 5000) - Ocelot API Gateway dla routingu żądań
+- **AuthService** (Port 5101) - Uwierzytelnianie i autoryzacja użytkowników (JWT, Identity)
+- **TicketService** (Port 5102) - Zarządzanie zgłoszeniami helpdesk
+- **UserService** (Port 5103) - Zarządzanie profilami użytkowników
+- **NotificationService** (Port 5104) - Wysyłanie powiadomień (email, SMS)
+- **ApiGateway** (Port 5100) - Ocelot API Gateway dla routingu żądań
 
 ### Infrastruktura
 - **PostgreSQL** - Bazy danych dla każdego serwisu
@@ -65,11 +65,11 @@ docker-compose down
 
 ### Dostęp do Serwisów
 
-- **API Gateway**: http://localhost:5000
-- **Auth Service**: http://localhost:5001
-- **Ticket Service**: http://localhost:5002
-- **User Service**: http://localhost:5003
-- **Notification Service**: http://localhost:5004
+- **API Gateway**: http://localhost:5100
+- **Auth Service**: http://localhost:5101
+- **Ticket Service**: http://localhost:5102
+- **User Service**: http://localhost:5103
+- **Notification Service**: http://localhost:5104
 - **RabbitMQ Management**: http://localhost:15672 (guest/guest)
 
 ### Uruchomienie Lokalne bez Docker
@@ -154,10 +154,10 @@ dotnet test
 ## 📝 API Documentation
 
 Swagger UI dostępny dla każdego serwisu:
-- Auth: http://localhost:5001/swagger
-- Tickets: http://localhost:5002/swagger
-- Users: http://localhost:5003/swagger
-- Notifications: http://localhost:5004/swagger
+- Auth: http://localhost:5101/swagger
+- Tickets: http://localhost:5102/swagger
+- Users: http://localhost:5103/swagger
+- Notifications: http://localhost:5104/swagger
 
 ## 🔐 Security
 
