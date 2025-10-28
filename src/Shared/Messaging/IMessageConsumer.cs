@@ -1,15 +1,14 @@
 namespace Shared.Messaging;
 
-
 public interface IMessageConsumer : IDisposable
 {
-   
-    /// Subskrybuj do kolejki i przetwarzaj wiadomości
-  
-    /// <typeparam name="T">Typ wiadomości (musi być klasą)</typeparam>
-    /// <param name="queueName">Nazwa kolejki RabbitMQ</param>
-    /// <param name="handler">Callback do przetwarzania wiadomości</param>
-    /// <param name="cancellationToken">Token anulowania</param>
+    /// <summary>
+    /// Subscribes to a queue and processes messages.
+    /// </summary>
+    /// <typeparam name="T">Message type (must be a class)</typeparam>
+    /// <param name="queueName">RabbitMQ queue name</param>
+    /// <param name="handler">Callback to process messages. Returns true for ACK, false for NACK with requeue.</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     Task SubscribeAsync<T>(
         string queueName,
         Func<T, Task<bool>> handler,

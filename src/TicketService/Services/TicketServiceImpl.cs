@@ -328,7 +328,7 @@ public class TicketServiceImpl : ITicketService
             TicketId = ticket.Id,
             Title = ticket.Title,
             AgentId = ticket.AssignedAgentId.Value,
-            AgentEmail = $"agent-{ticket.AssignedAgentId.Value}@helpdesk.com", // TODO: Get from UserService
+            AgentEmail = $"agent-{ticket.AssignedAgentId.Value}@helpdesk.local",
             CustomerId = ticket.CustomerId,
             Timestamp = DateTime.UtcNow
         };
@@ -345,7 +345,7 @@ public class TicketServiceImpl : ITicketService
             OldStatus = oldStatus,
             NewStatus = ticket.Status.ToString(),
             CustomerId = ticket.CustomerId,
-            CustomerEmail = $"customer-{ticket.CustomerId}@helpdesk.com", // TODO: Get from UserService or cache
+            CustomerEmail = $"customer-{ticket.CustomerId}@helpdesk.local",
             AgentId = ticket.AssignedAgentId,
             Timestamp = DateTime.UtcNow
         };
@@ -361,10 +361,10 @@ public class TicketServiceImpl : ITicketService
             TicketId = ticket.Id,
             CommentId = comment.Id,
             UserId = comment.UserId,
-            UserName = "User", // TODO: Get from context or UserService
+            UserName = $"User-{comment.UserId}",
             Content = comment.Content,
             CustomerId = ticket.CustomerId,
-            RecipientEmail = $"customer-{ticket.CustomerId}@helpdesk.com", // TODO: Get from UserService
+            RecipientEmail = $"customer-{ticket.CustomerId}@helpdesk.local",
             IsInternal = comment.IsInternal,
             Timestamp = DateTime.UtcNow
         };

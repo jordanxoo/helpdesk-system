@@ -121,6 +121,23 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Database Migration
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<TicketDbContext>();
+    
+    try
+    {
+        dbContext.Database.Migrate();
+        app.Logger.LogInformation("Database migration completed successfully");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Database migration failed or not needed");
+    }
+}
+
 // Enable Swagger in all environments for development and testing
 app.UseSwagger();
 app.UseSwaggerUI(c =>

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NotificationService.Configuration;
+using NotificationService.HealthChecks;
 using NotificationService.Services;
 using NotificationService.Workers;
 using Shared.Configuration;
@@ -34,8 +35,9 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "Notification Service API", Version = "v1" });
 });
 
-// Health Checks
-builder.Services.AddHealthChecks();
+// Health Checks - RabbitMQ connection
+builder.Services.AddHealthChecks()
+    .AddCheck<RabbitMqHealthCheck>("rabbitmq");
 
 var app = builder.Build();
 

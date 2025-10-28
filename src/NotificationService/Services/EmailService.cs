@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using System.Web;
 using Microsoft.Extensions.Options;
 using NotificationService.Configuration;
 
@@ -65,8 +66,8 @@ public class EmailService : IEmailService
         var body = $@"
             <h2>Your Support Ticket Has Been Created</h2>
             <p>Thank you for contacting our support team.</p>
-            <p><strong>Ticket ID:</strong> {ticketId}</p>
-            <p><strong>Title:</strong> {title}</p>
+            <p><strong>Ticket ID:</strong> {HttpUtility.HtmlEncode(ticketId)}</p>
+            <p><strong>Title:</strong> {HttpUtility.HtmlEncode(title)}</p>
             <p>We will review your request and get back to you as soon as possible.</p>
             <p>You can track the status of your ticket in your dashboard.</p>
             <br/>
@@ -81,8 +82,8 @@ public class EmailService : IEmailService
         var subject = $"New Ticket Assigned: {title}";
         var body = $@"
             <h2>A New Ticket Has Been Assigned to You</h2>
-            <p><strong>Ticket ID:</strong> {ticketId}</p>
-            <p><strong>Title:</strong> {title}</p>
+            <p><strong>Ticket ID:</strong> {HttpUtility.HtmlEncode(ticketId)}</p>
+            <p><strong>Title:</strong> {HttpUtility.HtmlEncode(title)}</p>
             <p>Please review the ticket details and respond to the customer.</p>
             <br/>
             <p>Best regards,<br/>Helpdesk System</p>
@@ -96,8 +97,8 @@ public class EmailService : IEmailService
         var subject = $"Ticket Status Updated - {ticketId}";
         var body = $@"
             <h2>Your Ticket Status Has Changed</h2>
-            <p><strong>Ticket ID:</strong> {ticketId}</p>
-            <p><strong>New Status:</strong> {newStatus}</p>
+            <p><strong>Ticket ID:</strong> {HttpUtility.HtmlEncode(ticketId)}</p>
+            <p><strong>New Status:</strong> {HttpUtility.HtmlEncode(newStatus)}</p>
             <p>You can view the details in your dashboard.</p>
             <br/>
             <p>Best regards,<br/>Helpdesk Support Team</p>
@@ -111,9 +112,9 @@ public class EmailService : IEmailService
         var subject = $"New Comment on Ticket {ticketId}";
         var body = $@"
             <h2>New Comment Added to Your Ticket</h2>
-            <p><strong>Ticket ID:</strong> {ticketId}</p>
+            <p><strong>Ticket ID:</strong> {HttpUtility.HtmlEncode(ticketId)}</p>
             <p><strong>Comment:</strong></p>
-            <p>{commentContent}</p>
+            <p>{HttpUtility.HtmlEncode(commentContent)}</p>
             <br/>
             <p>Best regards,<br/>Helpdesk Support Team</p>
         ";

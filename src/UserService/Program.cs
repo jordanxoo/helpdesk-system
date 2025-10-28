@@ -102,6 +102,23 @@ builder.Logging.AddDebug();
 
 var app = builder.Build();
 
+// Database Migration
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+    
+    try
+    {
+        dbContext.Database.Migrate();
+        app.Logger.LogInformation("Database migration completed successfully");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Database migration failed or not needed");
+    }
+}
+
 // Middleware Pipeline
 
 // Swagger w Development
@@ -121,7 +138,7 @@ app.UseCors("AllowAll");
 // HTTPS Redirection - nie potrzebne (ALB robi SSL termination w AWS)
 // app.UseHttpsRedirection(); // USUNIĘTE
 
-// Authentication & Authorization (TODO: będzie skonfigurowane później z JWT)
+// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -78,24 +78,24 @@ public class RabbitMqPublisher : IMessagePublisher, IDisposable
 
         try
         {
-            EnsureConnection();
-
-            var jsonMessage = JsonSerializer.Serialize(message, new JsonSerializerOptions
-            {
-                WriteIndented = false,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-
-            var body = Encoding.UTF8.GetBytes(jsonMessage);
-
-            var properties = _channel!.CreateBasicProperties();
-            properties.Persistent = _settings.PersistentMessages;
-            properties.ContentType = "application/json";
-            properties.DeliveryMode = _settings.PersistentMessages ? (byte)2 : (byte)1;
-            properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-
             lock (_lock)
             {
+                EnsureConnection();
+
+                var jsonMessage = JsonSerializer.Serialize(message, new JsonSerializerOptions
+                {
+                    WriteIndented = false,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+                var body = Encoding.UTF8.GetBytes(jsonMessage);
+
+                var properties = _channel!.CreateBasicProperties();
+                properties.Persistent = _settings.PersistentMessages;
+                properties.ContentType = "application/json";
+                properties.DeliveryMode = _settings.PersistentMessages ? (byte)2 : (byte)1;
+                properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
                 _channel.BasicPublish(
                     exchange: _settings.ExchangeName,
                     routingKey: routingKey,

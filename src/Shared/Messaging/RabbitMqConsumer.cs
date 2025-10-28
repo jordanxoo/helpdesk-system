@@ -15,6 +15,7 @@ public class RabbitMqConsumer : IMessageConsumer
     private readonly ILogger<RabbitMqConsumer> _logger;
     private IConnection? _connection;
     private IModel? _channel;
+    private readonly object _channelLock = new();
     private bool _disposed;
 
     public RabbitMqConsumer(
@@ -79,20 +80,33 @@ public class RabbitMqConsumer : IMessageConsumer
                     
                         var success = await handler(deserializedMessage);
 
-                        if (success)
+                        lock (_channelLock)
                         {
-                            _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
-                            _logger.LogInformation(
-                                "Message processed successfully. Queue: {QueueName}",
-                                queueName);
-                        }
-                        else
-                        {
+                            if (success)
+                            {
+                                _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
+                                _logger.LogInformation(
+                                    "Message processed successfully. Queue: {QueueName}",
+                                    queueName);
+                            }
+                            else
+                            {
                             
-                            _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
-                            _logger.LogWarning(
-                                "Message processing failed. Message requeued. Queue: {QueueName}",
-                                queueName);
+                                _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
+                                _logger.LogWarning(
+                                    "Message processing failed. Message requeued. Queue: {QueueName}",
+                                    queueName);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Deserialized message is null for queue {QueueName}",
+                            queueName);
+                        lock (_channelLock)
+                        {
+                            _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: false);
                         }
                     }
                 }
@@ -103,8 +117,10 @@ public class RabbitMqConsumer : IMessageConsumer
                         queueName,
                         message);
 
-                  
-                    _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: false);
+                    lock (_channelLock)
+                    {
+                        _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: false);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -112,8 +128,10 @@ public class RabbitMqConsumer : IMessageConsumer
                         "Error processing message from queue {QueueName}",
                         queueName);
 
-                
-                    _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
+                    lock (_channelLock)
+                    {
+                        _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
+                    }
                 }
             };
 
