@@ -86,20 +86,16 @@ public class NotificationWorker : BackgroundService
 
             using var scope = _serviceProvider.CreateScope();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-            var smsService = scope.ServiceProvider.GetRequiredService<ISmsService>();
 
-    
+            // TODO: Fetch customer details from AuthService/UserService using CustomerId via HTTP client
+            // For now, using mock data
+            var customerEmail = $"customer-{ticketEvent.CustomerId}@example.com";
+            var ticketTitle = "New Support Ticket";
+
             await emailService.SendTicketCreatedNotificationAsync(
-                ticketEvent.CustomerEmail,
+                customerEmail,
                 ticketEvent.TicketId.ToString(),
-                ticketEvent.Title);
-
-            if (!string.IsNullOrEmpty(ticketEvent.CustomerPhone))
-            {
-                await smsService.SendTicketCreatedSmsAsync(
-                    ticketEvent.CustomerPhone,
-                    ticketEvent.TicketId.ToString());
-            }
+                ticketTitle);
 
             _logger.LogInformation("TicketCreatedEvent processed successfully for ticket {TicketId}", ticketEvent.TicketId);
             return true;
@@ -122,10 +118,16 @@ public class NotificationWorker : BackgroundService
             using var scope = _serviceProvider.CreateScope();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
+            // TODO: Fetch agent details from UserService using AgentId via HTTP client
+            // TODO: Fetch ticket details from TicketService using TicketId via HTTP client
+            // For now, using mock data
+            var agentEmail = $"agent-{assignedEvent.AgentId}@example.com";
+            var ticketTitle = "Support Ticket Assignment";
+
             await emailService.SendTicketAssignedNotificationAsync(
-                assignedEvent.AgentEmail,
+                agentEmail,
                 assignedEvent.TicketId.ToString(),
-                assignedEvent.Title);
+                ticketTitle);
 
             _logger.LogInformation("TicketAssignedEvent processed successfully for ticket {TicketId}", assignedEvent.TicketId);
             return true;
@@ -148,8 +150,12 @@ public class NotificationWorker : BackgroundService
             using var scope = _serviceProvider.CreateScope();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
+            // TODO: Fetch customer details from AuthService/UserService using CustomerId via HTTP client
+            // For now, using mock data
+            var customerEmail = $"customer-{statusEvent.CustomerId}@example.com";
+
             await emailService.SendTicketStatusChangedNotificationAsync(
-                statusEvent.CustomerEmail,
+                customerEmail,
                 statusEvent.TicketId.ToString(),
                 statusEvent.NewStatus);
 
@@ -174,8 +180,12 @@ public class NotificationWorker : BackgroundService
             using var scope = _serviceProvider.CreateScope();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
+            // TODO: Fetch customer details from AuthService/UserService using CustomerId via HTTP client
+            // For now, using mock data
+            var recipientEmail = $"customer-{commentEvent.CustomerId}@example.com";
+
             await emailService.SendNewCommentNotificationAsync(
-                commentEvent.RecipientEmail,
+                recipientEmail,
                 commentEvent.TicketId.ToString(),
                 commentEvent.Content);
 

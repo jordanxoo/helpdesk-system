@@ -116,21 +116,15 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<TicketDto>> Create([FromBody] CreateTicketRequest request)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var emailClaim = User.FindFirst(ClaimTypes.Email)?.Value;
         
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
         {
             return Unauthorized(new { message = "Invalid user ID" });
         }
 
-        if (string.IsNullOrEmpty(emailClaim))
-        {
-            return Unauthorized(new { message = "Email claim not found in token" });
-        }
-
         try
         {
-            var ticket = await _ticketService.CreateAsync(userId, emailClaim, request);
+            var ticket = await _ticketService.CreateAsync(userId, request);
             return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
         }
         catch (ArgumentException ex)
