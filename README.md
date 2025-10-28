@@ -151,6 +151,20 @@ aws cloudformation create-stack \
 - **CloudWatch** - Logging i monitoring
 - **S3** - File storage
 
+## 🏥 Health Checks
+
+Każdy serwis ma `/health` endpoint:
+
+```bash
+curl http://localhost:5101/health  # AuthService
+curl http://localhost:5102/health  # TicketService
+curl http://localhost:5103/health  # UserService
+```
+
+Response sprawdza PostgreSQL i zwraca status + czas wykonania w ms.
+
+> **Uwaga:** To endpoint dla Docker/Kubernetes/ECS, nie dla frontendu. Dlatego nie ma go w Swagger.
+
 ## 🧪 Testing
 
 ```bash

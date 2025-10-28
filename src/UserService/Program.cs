@@ -1,4 +1,7 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using UserService.Data;
 using UserService.Repositories;
 using UserService.Services;
@@ -61,6 +64,10 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Health Checks - monitorowanie stanu serwisu
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
+
 // Logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -94,13 +101,29 @@ app.UseAuthorization();
 // Controllers
 app.MapControllers();
 
-// Health Check endpoint
-app.MapGet("/health", () => Results.Ok(new 
-{ 
-    status = "healthy", 
-    service = "UserService",
-    timestamp = DateTime.UtcNow 
-}));
+// Health Check endpoint z custom JSON response
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        
+        var result = JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            service = "UserService",
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                duration = e.Value.Duration.TotalMilliseconds
+            })
+        });
+        
+        await context.Response.WriteAsync(result);
+    }
+});
 
 // Database Migration (automatyczne przy starcie w Development)
 if (app.Environment.IsDevelopment())

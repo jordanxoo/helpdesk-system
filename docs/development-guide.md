@@ -259,6 +259,36 @@ git push origin main
 - Jak migrować dane w przyszłości?
 - Jak monitorować wydajność?
 
+## Health Checks
+
+Każdy serwis ma `/health` endpoint który sprawdza połączenie z PostgreSQL.
+
+**Przykład response:**
+```json
+{
+  "status": "Healthy",
+  "service": "AuthService",
+  "timestamp": "2025-10-28T12:38:54Z",
+  "checks": [
+    {
+      "name": "npgsql",
+      "status": "Healthy",
+      "duration": 2.75
+    }
+  ]
+}
+```
+
+**Pakiet:**
+```xml
+<PackageReference Include="AspNetCore.HealthChecks.Npgsql" Version="9.0.0" />
+```
+
+**Dlaczego nie ma w Swagger?**
+- `/health` to infrastructure endpoint dla Docker/Kubernetes/ECS
+- Swagger to business API dla deweloperów
+- To różne rzeczy, celowo oddzielone
+
 ## Następne Kroki
 
 Po zakończeniu implementacji szkieletu:

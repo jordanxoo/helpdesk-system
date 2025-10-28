@@ -1,7 +1,10 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Shared.Configuration;
 using Shared.Models;
@@ -78,6 +81,10 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 });
+
+// Health Checks - monitorowanie stanu serwisu
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
 
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -205,13 +212,30 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Health Check endpoint z custom JSON response
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        
+        var result = JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            service = "AuthService",
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                duration = e.Value.Duration.TotalMilliseconds
+            })
+        });
+        
+        await context.Response.WriteAsync(result);
+    }
+});
 
-app.MapGet("/health", () => Results.Ok(new 
-{ 
-    status = "healthy", 
-    service = "AuthService",
-    timestamp = DateTime.UtcNow 
-}));
 
 app.Logger.LogInformation("AuthService started successfully");
 
