@@ -1,0 +1,134 @@
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@radix-ui/react-label";
+import {Card, CardContent, CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
+import {Link} from 'react-router-dom';
+
+export default function RegisterPage()
+{
+    const [formData,setFormData] = useState({
+        email: '',
+        password: '',
+        confirmPassword: ' ',
+        firstName: ' ',
+        lastName: ' ',
+        phoneNumber: ' ',
+
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log('Register attempt: ', formData);
+        //TODO POLACZENIE Z API
+    };
+    const handleChange = (e:React.ChangeEvent<HTMLInputElement>) =>
+    {
+        setFormData({
+            ...formData,
+            [e.target.name] : e.target.value,
+        });
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="space-y-1">
+                    <CardTitle className="text-2xl font bold">
+                        <CardDescription>
+                            Wprowadź swoje dane, aby założyć konto w systemie
+                        </CardDescription>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName">Imię</Label>
+                                <Input
+                                id="firstName"
+                                name="firstName"
+                                type="text"
+                                placeholder="Jan"
+                                value={formData.firstName}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName"> Nazwisko</Label>
+                                <Input
+                                id="lastName"
+                                name="lastName"
+                                type="text"
+                                placeholder="Kowalski"
+                                value={formData.lastName}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phoneNumber">Numer Telefonu</Label>
+                                <Input
+                                id="phoneNumber"
+                                name="phoneNumber"
+                                type="tel"
+                                placeholder="+48 123 456 789"
+                                value={formData.phoneNumber}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Email</Label>
+                                <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                placeholder="jan.kowalski@example.com"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Hasło</Label>
+                                <Input
+                                id="password"
+                                name="password"
+                                type="password"
+                                placeholder="********"
+                                value={formData.password}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="confirmPassword">Potwierdź hasło</Label>
+                                <Input
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                type="password"
+                                placeholder="********"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+                            <Button type="submit" className="w-full">
+                                Zarejestruj się
+                            </Button>
+
+                            <div className="text-center text-sm text-gray-600">
+                                Masz już konto? {' '}
+                                <Link to="/login" className="text-blue-600 hover:underline font-medium">
+                                Zaloguj się
+                                </Link>
+                            </div>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

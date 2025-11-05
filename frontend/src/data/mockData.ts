@@ -1,0 +1,60 @@
+export const mockUser = {
+  id: '1',
+  email: 'jan.kowalski@example.com',
+  firstName: 'Jan',
+  lastName: 'Kowalski',
+  fullName: 'Jan Kowalski',
+  role: 'Customer',
+};
+
+export const mockStats = {
+  totalTickets: 12,
+  openTickets: 3,
+  inProgressTickets: 5,
+  resolvedTickets: 4,
+};
+
+export const mockTickets = [
+  {
+    id: '1',
+    title: 'Problem z logowaniem do systemu',
+    description: 'Nie mogę się zalogować do systemu. Wyświetla się błąd "Invalid credentials" mimo poprawnych danych.',
+    status: 'Open',
+    priority: 'High',
+    category: 'Techniczny', 
+    createdAt: '2024-11-01T10:30:00Z',
+    updatedAt: '2024-11-01T14:20:00Z',
+    customerId: '1',
+    customerName: 'Jan Kowalski',
+    agentId: null,
+    agentName: null,
+  },
+  {
+    id: '2',
+    title: 'Pytanie o funkcję eksportu danych',
+    description: 'Jak mogę wyeksportować dane do pliku Excel? Nie widzę takiej opcji w menu.',
+    status: 'InProgress',
+    priority: 'Medium',
+    category: 'Pytanie', 
+    createdAt: '2024-10-28T09:15:00Z',
+    updatedAt: '2024-11-02T11:45:00Z',
+    customerId: '1',
+    customerName: 'Jan Kowalski',
+    agentId: '2',
+    agentName: 'Anna Nowak',
+  },
+  {
+    id: '3',
+    title: 'Błąd 500 przy zapisywaniu formularza',
+    description: 'Podczas zapisywania formularza kontaktowego pojawia się błąd serwera 500. Problem występuje od wczoraj.',
+    status: 'Resolved',
+    priority: 'Critical',
+    category: 'Błąd', 
+    createdAt: '2024-10-25T14:00:00Z',
+    updatedAt: '2024-10-26T16:30:00Z',
+    customerId: '1',
+    customerName: 'Jan Kowalski',
+    agentId: '3',
+    agentName: 'Piotr Wiśniewski',
+  },
+];
