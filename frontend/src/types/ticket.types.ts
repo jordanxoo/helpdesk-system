@@ -4,11 +4,13 @@ export interface Ticket {
   description: string;
   status: string;
   priority: string;
+  category?: string;
   customerId: string;
   customerName: string;
   customerEmail: string;
   agentId: string | null;
   agentName: string | null;
+  assignedAgentName?: string | null;
   createdAt: string;
   updatedAt: string;
   comments: TicketComment[];
@@ -19,6 +21,7 @@ export interface TicketComment {
   ticketId: string;
   userId: string;
   userName: string;
+  userRole?: string;
   content: string;
   createdAt: string;
 }
@@ -39,4 +42,8 @@ export interface TicketListResponse {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+export interface TicketDetails extends Ticket {
+    comments: TicketComment[];
 }

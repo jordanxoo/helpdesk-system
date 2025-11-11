@@ -4,6 +4,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashBoardPage';
 import TicketsPage from '@/pages/TicketsPage';
 import CreateTicketPage from './pages/CreateTicketPage';
+import TicketDetailsPage from './pages/TicketDetailsPage';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/tickets/create" element={<CreateTicketPage />}/>
+        <Route path="/tickets/:id" element={<TicketDetailsPage />} />
       </Routes>
     </BrowserRouter>
   );
