@@ -31,6 +31,10 @@ builder.Services.AddDbContext<TicketDbContext>(options =>
 
 // Dependency Injection
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+builder.Services.AddScoped<ISlaRepository, SlaRepository>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
+
 builder.Services.AddScoped<ITicketService, TicketServiceImpl>();
 
 builder.Services.Configure<MessagingSettings>(
@@ -65,7 +69,12 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();

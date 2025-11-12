@@ -1,0 +1,236 @@
+================================================================================
+                    STRUKTURA BAZY DANYCH - HELPDESK SYSTEM
+================================================================================
+
+System używa 3 oddzielnych baz danych (Database per Service pattern)
+
+
+================================================================================
+1. helpdesk_auth (AuthService)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TABELA: users - Użytkownicy systemu (ASP.NET Identity)                     │
+├─────────────────────────────┬──────────────────────┬──────────────────────┤
+│ Kolumna                     │ Typ                  │ Opis                 │
+├─────────────────────────────┼──────────────────────┼──────────────────────┤
+│ Id                          │ string (PK)          │ GUID użytkownika     │
+│ FirstName                   │ varchar(100)         │ Imię                 │
+│ LastName                    │ varchar(100)         │ Nazwisko             │
+│ Email                       │ varchar(256)         │ Email                │
+│ NormalizedEmail             │ varchar(256)         │ Email uppercase      │
+│ EmailConfirmed              │ boolean              │ Email potwierdzony   │
+│ PasswordHash                │ text                 │ Hash hasła           │
+│ PhoneNumber                 │ text                 │ Telefon              │
+│ PhoneNumberConfirmed        │ boolean              │ Telefon potwierdzony │
+│ UserName                    │ varchar(256)         │ Nazwa użytkownika    │
+│ NormalizedUserName          │ varchar(256)         │ Username uppercase   │
+│ SecurityStamp               │ text                 │ Security token       │
+│ ConcurrencyStamp            │ text                 │ Concurrency control  │
+│ TwoFactorEnabled            │ boolean              │ 2FA włączone         │
+│ LockoutEnd                  │ timestamptz          │ Koniec blokady       │
+│ LockoutEnabled              │ boolean              │ Blokada włączona     │
+│ AccessFailedCount           │ integer              │ Błędne logowania     │
+│ CreatedAt                   │ timestamptz          │ Data utworzenia      │
+│ RefreshToken                │ varchar(500)         │ Refresh token        │
+│ RefreshTokenExpiryTime      │ timestamptz          │ Wygaśnięcie tokenu   │
+└─────────────────────────────┴──────────────────────┴──────────────────────┘
+Indeksy:
+  • EmailIndex (NormalizedEmail)
+  • UserNameIndex (NormalizedUserName) UNIQUE
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TABELA: roles - Role systemowe                                             │
+├─────────────────────────────┬──────────────────────┬──────────────────────┤
+│ Kolumna                     │ Typ                  │ Opis                 │
+├─────────────────────────────┼──────────────────────┼──────────────────────┤
+│ Id                          │ string (PK)          │ GUID roli            │
+│ Name                        │ varchar(256)         │ Nazwa roli           │
+│ NormalizedName              │ varchar(256)         │ Nazwa uppercase      │
+│ ConcurrencyStamp            │ text                 │ Concurrency control  │
+└─────────────────────────────┴──────────────────────┴──────────────────────┘
+Indeksy:
+  • RoleNameIndex (NormalizedName) UNIQUE
+
+Dostępne role: Customer, Agent, Administrator
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TABELA: user_roles - Powiązanie użytkowników z rolami                      │
+├─────────────────────────────┬──────────────────────┬──────────────────────┤
+│ Kolumna                     │ Typ                  │ Opis                 │
+├─────────────────────────────┼──────────────────────┼──────────────────────┤
+│ UserId                      │ string (PK, FK)      │ ID użytkownika       │
+│ RoleId                      │ string (PK, FK)      │ ID roli              │
+└─────────────────────────────┴──────────────────────┴──────────────────────┘
+Foreign Keys:
+  • users.Id (CASCADE DELETE)
+  • roles.Id (CASCADE DELETE)
+
+
+Dodatkowe tabele ASP.NET Identity:
+  • user_claims - Dodatkowe uprawnienia użytkowników
+  • role_claims - Uprawnienia ról
+  • user_logins - Zewnętrzne loginy (OAuth, etc.)
+  • user_tokens - Tokeny uwierzytelniania
+
+
+================================================================================
+2. helpdesk_tickets (TicketService)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TABELA: tickets - Zgłoszenia helpdesk                                      │
+├─────────────────────────────┬──────────────────────┬──────────────────────┤
+│ Kolumna                     │ Typ                  │ Opis                 │
+├─────────────────────────────┼──────────────────────┼──────────────────────┤
+│ id                          │ uuid (PK)            │ ID zgłoszenia        │
+│ title                       │ varchar(200)         │ Tytuł                │
+│ description                 │ varchar(2000)        │ Opis problemu        │
+│ status                      │ varchar(50)          │ Status               │
+│ priority                    │ varchar(50)          │ Priorytet            │
+│ category                    │ varchar(50)          │ Kategoria            │
+│ customer_id                 │ uuid                 │ ID klienta           │
+│ assigned_agent_id           │ uuid (nullable)      │ ID przypisanego      │
+│ created_at                  │ timestamptz          │ Data utworzenia      │
+│ updated_at                  │ timestamptz (null)   │ Data aktualizacji    │
+│ resolved_at                 │ timestamptz (null)   │ Data rozwiązania     │
+└─────────────────────────────┴──────────────────────┴──────────────────────┘
+Indeksy:
+  • ix_tickets_status (status)
+  • ix_tickets_priority (priority)
+  • ix_tickets_customer_id (customer_id)
+  • ix_tickets_assigned_agent_id (assigned_agent_id)
+  • ix_tickets_created_at (created_at)
+
+Statusy: Open, InProgress, Resolved, Closed
+Priorytety: Low, Medium, High, Critical
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TABELA: ticket_comments - Komentarze do zgłoszeń                           │
+├─────────────────────────────┬──────────────────────┬──────────────────────┤
+│ Kolumna                     │ Typ                  │ Opis                 │
+├─────────────────────────────┼──────────────────────┼──────────────────────┤
+│ id                          │ uuid (PK)            │ ID komentarza        │
+│ ticket_id                   │ uuid (FK)            │ ID zgłoszenia        │
+│ user_id                     │ uuid                 │ ID autora            │
+│ content                     │ varchar(1000)        │ Treść komentarza     │
+│ created_at                  │ timestamptz          │ Data utworzenia      │
+│ is_internal                 │ boolean              │ Czy wewnętrzny       │
+└─────────────────────────────┴──────────────────────┴──────────────────────┘
+Indeksy:
+  • ix_ticket_comments_ticket_id (ticket_id)
+  • ix_ticket_comments_user_id (user_id)
+  • ix_ticket_comments_created_at (created_at)
+
+Foreign Keys:
+  • tickets.id (CASCADE DELETE)
+
+
+================================================================================
+3. helpdesk_users (UserService)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TABELA: users - Profile użytkowników                                       │
+├─────────────────────────────┬──────────────────────┬──────────────────────┤
+│ Kolumna                     │ Typ                  │ Opis                 │
+├─────────────────────────────┼──────────────────────┼──────────────────────┤
+│ id                          │ uuid (PK)            │ ID użytkownika       │
+│ email                       │ varchar(100)         │ Email (UNIQUE)       │
+│ first_name                  │ varchar(100)         │ Imię                 │
+│ last_name                   │ varchar(100)         │ Nazwisko             │
+│ phone_number                │ varchar(20)          │ Telefon              │
+│ role                        │ varchar(50)          │ Rola użytkownika     │
+│ created_at                  │ timestamptz          │ Data utworzenia      │
+│ updated_at                  │ timestamptz (null)   │ Data aktualizacji    │
+│ is_active                   │ boolean              │ Czy aktywny          │
+│                             │ (default: true)      │                      │
+└─────────────────────────────┴──────────────────────┴──────────────────────┘
+Indeksy:
+  • idx_users_email (email) UNIQUE
+  • idx_users_role (role)
+  • idx_users_is_active (is_active)
+
+
+================================================================================
+RELACJE MIĘDZY SERWISAMI
+================================================================================
+
+┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
+│  AuthService    │         │  UserService     │         │ TicketService   │
+│  (helpdesk_auth)│         │ (helpdesk_users) │         │(helpdesk_tickets)│
+├─────────────────┤         ├──────────────────┤         ├─────────────────┤
+│ users           │◄────┐   │ users            │◄────┐   │ tickets         │
+│  - Id (GUID)    │     │   │  - id (GUID)     │     │   │  - customer_id  │
+│  - Email        │     │   │  - email         │     │   │  - assigned_    │
+│  - Roles        │     │   │  - role          │     │   │    agent_id     │
+└─────────────────┘     │   └──────────────────┘     │   ├─────────────────┤
+                        │                            │   │ ticket_comments │
+                        └────────────────────────────┴───│  - user_id      │
+                        Event-Driven (RabbitMQ)          └─────────────────┘
+                        + API calls przez Gateway
+
+
+UWAGA: 
+ID użytkowników są synchronizowane między serwisami poprzez:
+- Event-Driven Architecture (RabbitMQ) - UserCreated, UserUpdated events
+- API Gateway dla zapytań w czasie rzeczywistym
+
+
+================================================================================
+KOMUNIKACJA MIĘDZY SERWISAMI
+================================================================================
+
+RabbitMQ Exchange: helpdesk-events (Topic)
+
+Eventy publikowane:
+  • TicketCreated         - Nowe zgłoszenie
+  • TicketStatusChanged   - Zmiana statusu zgłoszenia
+  • TicketAssigned        - Przypisanie zgłoszenia do agenta
+  • CommentAdded          - Dodanie komentarza
+  • UserCreated           - Nowy użytkownik
+  • UserUpdated           - Aktualizacja użytkownika
+
+
+================================================================================
+PORTY SERWISÓW
+================================================================================
+
+  • API Gateway:          http://localhost:5100
+  • AuthService:          http://localhost:5101
+  • TicketService:        http://localhost:5102
+  • UserService:          http://localhost:5103
+  • NotificationService:  http://localhost:5104
+  • PostgreSQL:           localhost:5432
+  • RabbitMQ Management:  http://localhost:15672 (guest/guest)
+
+
+================================================================================
+TESTOWE KONTA UŻYTKOWNIKÓW
+================================================================================
+
+Admin:
+  Email: admin@helpdesk.com
+  Hasło: Admin123!
+  Rola: Customer (domyślna)
+
+Agent:
+  Email: agent@helpdesk.com
+  Hasło: Agent123!
+  Rola: Customer (domyślna)
+
+Customer:
+  Email: customer@helpdesk.com
+  Hasło: Customer123!
+  Rola: Customer (domyślna)
+
+UWAGA: Aby zmienić rolę użytkownika, użyj endpointu administratora lub 
+bezpośrednio zmień w bazie danych (tabela user_roles w helpdesk_auth).
+
+
+================================================================================
+GENEROWANE: 2025-11-12
+================================================================================
