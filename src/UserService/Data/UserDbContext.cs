@@ -35,6 +35,8 @@ public class UserDbContext : DbContext
                 .HasMaxLength(50)
                 .IsRequired();
             
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);

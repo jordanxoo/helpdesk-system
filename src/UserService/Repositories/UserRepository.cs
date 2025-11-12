@@ -89,7 +89,12 @@ public class UserRepository : IUserRepository
 
     public async Task<User> CreateAsync(User user)
     {
-        user.Id = Guid.NewGuid();
+        // Jeśli ID nie jest ustawione (Guid.Empty), wygeneruj nowe
+        if (user.Id == Guid.Empty)
+        {
+            user.Id = Guid.NewGuid();
+        }
+        
         user.CreatedAt = DateTime.UtcNow;
 
         _context.Users.Add(user);

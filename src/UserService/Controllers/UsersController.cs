@@ -49,6 +49,8 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [AllowAnonymous] // TODO: Security - Consider API Key or service-to-service auth for internal calls
+                      // Currently allows unauthenticated access for TicketService communication
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetById(Guid id)
@@ -179,6 +181,27 @@ public class UsersController : ControllerBase
         }
 
         return Ok(user);
+    }
+
+    [HttpPut("{id}/organization")]
+    [Authorize(Roles = UserRoles.Administrator)]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserDto>> AssignOrganization(Guid id, [FromBody] AssignOrganizationRequest request)
+    {
+        _logger.LogInformation("PUT /api/users/{Id}/organization - OrganizationId: {OrganizationId}", id, request.OrganizationId);
+
+        try
+        {
+            var updatedUser = await _userService.AssignOrganizationAsync(id, request.OrganizationId);
+            return Ok(updatedUser);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "User not found: {Id}", id);
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpHead("{id}")]

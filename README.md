@@ -19,6 +19,19 @@ System składa się z następujących mikroservisów:
 - **Docker & Docker Compose** - Konteneryzacja i orkiestracja lokalna
 - **AWS ECS/Fargate** - Deployment w chmurze (CloudFormation templates)
 
+### Decyzje Architektoniczne
+
+System wykorzystuje wzorzec **Database per Service** - każdy mikroservis ma własną bazę danych (helpdesk_auth, helpdesk_users, helpdesk_tickets). To podejście zapewnia:
+- **Separację odpowiedzialności** - każdy serwis jest niezależny
+- **Skalowalność** - serwisy można skalować osobno
+- **Odporność na awarie** - problemy w jednym serwisie nie blokują innych
+
+**Komunikacja między serwisami:**
+- **Synchroniczna (HTTP)**: TicketService → UserService (pobieranie organizacji użytkownika przy tworzeniu ticketu)
+- **Asynchroniczna (RabbitMQ)**: AuthService → UserService (synchronizacja nowych użytkowników)
+
+**Trade-off**: Brak foreign key constraints między bazami (np. organization_id w users → organizations w innej bazie). To normalne w architekturze mikroservisowej - walidacja odbywa się w kodzie aplikacji, co zapewnia eventual consistency.
+
 ## 📁 Struktura Projektu
 
 ```
@@ -159,6 +172,48 @@ dotnet ef database update --project src/AuthService
 - TicketService - Publikowanie eventów po każdej akcji
 - appsettings.json - Dodano MessagingSettings dla RabbitMQ
 - `helpdesk_users` - UserService
+
+---
+
+## 📅 Changelog - Listopad 2025
+
+### ✨ Faza 2: Rozszerzenie bazy danych + Komunikacja między serwisami
+
+#### 🗄️ Rozszerzenie struktury bazy danych
+- **TicketService** - Dodano tabele: `organizations`, `slas`, `tags`, `ticket_tags`, `ticket_history`, `attachments`
+- **UserService** - Dodano pole `organization_id` (UUID) do tabeli `users`
+- Nowe kontrolery: OrganizationsController, SlaController, TagsController
+- Migracje dla wszystkich zmian struktury baz danych
+
+#### 🔄 Komunikacja synchroniczna (HTTP)
+- **UserServiceClient** - HTTP client dla komunikacji TicketService → UserService
+- Auto-fetch organizacji użytkownika przy tworzeniu ticketu
+- Opcja manualnego override `organizationId` przez Agent/Admin
+- Timeout 10s, obsługa błędów, logging
+
+#### 📨 Komunikacja asynchroniczna (Event-Driven)
+- **UserRegisteredEvent** - Event publikowany przez AuthService po rejestracji
+- **UserEventConsumer** - Worker w UserService nasłuchujący na eventy rejestracji
+- Synchronizacja użytkowników: AuthService (helpdesk_auth) → UserService (helpdesk_users)
+- Idempotencja - duplikaty eventów są ignorowane
+
+#### 🎫 Tworzenie ticketów - rozszerzenie logiki biznesowej
+- **Customer** - tworzy tickety dla siebie (userId z tokenu JWT)
+- **Agent/Administrator** - tworzą tickety w imieniu klienta (wymagane `customerId` w request)
+- Walidacja bezpieczeństwa - Customer nie może podać innego `customerId`
+- Automatyczne przypisanie `organizationId` na podstawie użytkownika
+
+#### 🔐 Role i autoryzacja
+- POST /api/auth/register - dodano pole `role` (Customer, Agent, Administrator)
+- PUT /api/users/{id}/organization - przypisanie użytkownika do organizacji (tylko Admin)
+- POST /api/tickets - dostępne dla wszystkich ról z różną logiką
+
+#### 📝 Dokumentacja
+- Zaktualizowana kolekcja Insomnia - nowe requesty dla Agent workflow
+- XML comments w kontrolerach opisujące zmiany
+- Rozszerzona dokumentacja architektury w README
+
+---
 
 ### Migracje Entity Framework
 

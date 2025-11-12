@@ -109,14 +109,17 @@ public class TicketsController : ControllerBase
 
     /// <summary>
     /// Tworzy nowy ticket
+    /// Customer: Tworzy ticket dla siebie
+    /// Agent/Admin: Może tworzyć ticket w imieniu customera (wymaga CustomerId w request)
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = UserRoles.Customer)]
+    [Authorize(Roles = "Customer,Agent,Administrator")]
     [ProducesResponseType(typeof(TicketDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TicketDto>> Create([FromBody] CreateTicketRequest request)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
         
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
         {
@@ -125,7 +128,9 @@ public class TicketsController : ControllerBase
 
         try
         {
-            var ticket = await _ticketService.CreateAsync(userId, request);
+            // Customer creates ticket for themselves
+            // Agent/Admin can create ticket for a customer (requires CustomerId in request)
+            var ticket = await _ticketService.CreateAsync(userId, userRole, request);
             return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
         }
         catch (ArgumentException ex)

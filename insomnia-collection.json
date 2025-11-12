@@ -51,7 +51,7 @@
       "method": "POST",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"email\": \"john.doe@helpdesk.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+48123456789\"\n}"
+        "text": "{\n  \"email\": \"john.doe@helpdesk.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+48123456789\",\n  \"role\": \"Customer\"\n}"
       },
       "parameters": [],
       "headers": [
@@ -70,7 +70,7 @@
       "settingRebuildPath": true,
       "settingFollowRedirects": "global",
       "parentId": "fld_auth",
-      "description": "Register a new user as Customer. Returns JWT token automatically."
+      "description": "Register a new user. Specify role: Customer, Agent, or Administrator. Returns JWT token automatically."
     },
     {
       "_id": "req_login",
@@ -174,7 +174,34 @@
       "metaSortKey": -1,
       "isPrivate": false,
       "parentId": "fld_tickets",
-      "description": "Create new ticket (Customer role required)"
+      "description": "Create new ticket. Customer: creates for themselves. Agent/Admin: can create on behalf of customer (provide customerId field)."
+    },
+    {
+      "_id": "req_create_ticket_agent",
+      "_type": "request",
+      "name": "Create Ticket (Agent for Customer)",
+      "url": "{{ _.ticket_url }}/api/tickets",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Laptop nie włącza się\",\n  \"description\": \"Ticket utworzony przez agenta w imieniu klienta\",\n  \"priority\": \"High\",\n  \"category\": \"Hardware\",\n  \"customerId\": \"{{ _.user_id }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1.5,
+      "isPrivate": false,
+      "parentId": "fld_tickets",
+      "description": "Agent/Admin creates ticket on behalf of customer (requires Agent or Administrator role)"
     },
     {
       "_id": "req_get_my_tickets",
@@ -373,6 +400,33 @@
       "isPrivate": false,
       "parentId": "fld_users",
       "description": "Search users with filters"
+    },
+    {
+      "_id": "req_assign_organization",
+      "_type": "request",
+      "name": "Assign Organization to User",
+      "url": "{{ _.user_url }}/api/users/{{ _.user_id }}/organization",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"organizationId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -3.5,
+      "isPrivate": false,
+      "parentId": "fld_users",
+      "description": "Assign user to organization (Administrator role required)"
     },
     {
       "_id": "fld_health",

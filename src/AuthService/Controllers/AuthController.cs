@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 using Shared.Models;
+using Shared.Events;
+using Shared.Messaging;
 using AuthService.Data;
 using AuthService.Services;
 using Amazon.SQS.Model;
@@ -16,15 +18,17 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ITokenService _tokenService;
+    private readonly IMessagePublisher _messagePublisher;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager,
-        ITokenService tokenService, ILogger<AuthController> logger)
+        ITokenService tokenService, IMessagePublisher messagePublisher, ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _tokenService = tokenService;
+        _messagePublisher = messagePublisher;
         _logger = logger;
     }
 
@@ -66,10 +70,31 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Registration failed", errors = result.Errors.Select(e => e.Description) });
         }
 
-        // domyslna rola - customer, chb git???????/
-        await _userManager.AddToRoleAsync(user, UserRole.Customer.ToString());
+        // Add role from request (Customer, Agent, or Administrator)
+        await _userManager.AddToRoleAsync(user, request.Role);
 
         _logger.LogInformation("User registered successfully: {Email}", request.Email);
+
+        // Publish UserRegisteredEvent dla UserService
+        var userRegisteredEvent = new UserRegisteredEvent
+        {
+            UserId = Guid.Parse(user.Id),
+            Email = user.Email!,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = request.Role.ToString()  // Use actual role from request, not hardcoded Customer
+        };
+        
+        try
+        {
+            await _messagePublisher.PublishAsync(userRegisteredEvent, Shared.Constants.RoutingKeys.UserRegistered);
+            _logger.LogInformation("UserRegisteredEvent published for user: {Email}", user.Email);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish UserRegisteredEvent for user: {Email}", user.Email);
+            // Nie przerywamy procesu rejestracji - event jest nice-to-have
+        }
 
         //automatyczne logowanie
         // po zalozeniu konta
@@ -93,6 +118,7 @@ public class AuthController : ControllerBase
                 FullName: $"{user.FirstName} {user.LastName}",
                 PhoneNumber: user.PhoneNumber ?? string.Empty,
                 Role: roles.FirstOrDefault() ?? UserRole.Customer.ToString(),
+                OrganizationId: null,  // AuthService nie zna organizacji - zarządza UserService
                 CreatedAt: user.CreatedAt,
                 UpdatedAt: null,
                 IsActive: true
@@ -147,6 +173,7 @@ public class AuthController : ControllerBase
                   FullName: $"{user.FirstName} {user.LastName}",
                   PhoneNumber: user.PhoneNumber ?? string.Empty,
                   Role: roles.FirstOrDefault() ?? UserRole.Customer.ToString(),
+                  OrganizationId: null,  // AuthService nie zna organizacji - zarządza UserService
                   CreatedAt: user.CreatedAt,
                   UpdatedAt: null,
                   IsActive: true

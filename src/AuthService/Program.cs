@@ -19,6 +19,10 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 builder.Services.Configure<JwtSettings>(jwtSettings);
 var jwtSettingsObj = jwtSettings.Get<JwtSettings>();
 
+// Konfiguracja MessagingSettings
+builder.Services.Configure<Shared.Configuration.MessagingSettings>(
+    builder.Configuration.GetSection("MessagingSettings"));
+
 // Konfiguracja Database Context
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(
@@ -87,6 +91,8 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
+// RabbitMQ Publisher
+builder.Services.AddSingleton<Shared.Messaging.IMessagePublisher, Shared.Messaging.RabbitMqPublisher>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 

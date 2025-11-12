@@ -3,6 +3,7 @@ using Shared.DTOs;
 using Shared.Models;
 using Shared.Events;
 using Shared.Messaging;
+using Shared.HttpClients;
 using TicketService.Repositories;
 
 namespace TicketService.Services;
@@ -11,15 +12,18 @@ public class TicketServiceImpl : ITicketService
 {
     private readonly ITicketRepository _repository;
     private readonly IMessagePublisher _messagePublisher;
+    private readonly IUserServiceClient _userServiceClient;
     private readonly ILogger<TicketServiceImpl> _logger;
 
     public TicketServiceImpl(
         ITicketRepository repository, 
-        IMessagePublisher messagePublisher, 
+        IMessagePublisher messagePublisher,
+        IUserServiceClient userServiceClient,
         ILogger<TicketServiceImpl> logger)
     {
         _repository = repository;
         _messagePublisher = messagePublisher;
+        _userServiceClient = userServiceClient;
         _logger = logger;
     }
 
@@ -106,9 +110,9 @@ public class TicketServiceImpl : ITicketService
         );
     }
 
-    public async Task<TicketDto> CreateAsync(Guid customerId, CreateTicketRequest request)
+    public async Task<TicketDto> CreateAsync(Guid userId, string userRole, CreateTicketRequest request)
     {
-        _logger.LogInformation("Creating new ticket for customer: {CustomerId}", customerId);
+        _logger.LogInformation("Creating new ticket - User: {UserId}, Role: {Role}", userId, userRole);
 
         if (!Enum.TryParse<TicketPriority>(request.Priority, out var priority))
         {
@@ -120,18 +124,72 @@ public class TicketServiceImpl : ITicketService
             throw new ArgumentException($"Invalid category: {request.Category}");
         }
 
+        // Determine the actual customer ID based on role
+        Guid actualCustomerId;
+        
+        if (userRole == "Customer")
+        {
+            // Customer creates ticket for themselves
+            actualCustomerId = userId;
+            
+            if (request.CustomerId.HasValue && request.CustomerId.Value != userId)
+            {
+                throw new ArgumentException("Customers can only create tickets for themselves");
+            }
+        }
+        else if (userRole == "Agent" || userRole == "Administrator")
+        {
+            // Agent/Admin must provide CustomerId
+            if (!request.CustomerId.HasValue)
+            {
+                throw new ArgumentException("Agents and Administrators must specify CustomerId when creating tickets");
+            }
+            
+            actualCustomerId = request.CustomerId.Value;
+            _logger.LogInformation("Agent/Admin {UserId} creating ticket for customer {CustomerId}", 
+                userId, actualCustomerId);
+        }
+        else
+        {
+            throw new ArgumentException($"Invalid role: {userRole}");
+        }
+
+        // Determine OrganizationId
+        Guid? organizationId = null;
+
+        if (request.OrganizationId.HasValue)
+        {
+            // Manual override (usually by Agent/Admin)
+            organizationId = request.OrganizationId.Value;
+            _logger.LogInformation("Using manually provided OrganizationId: {OrganizationId}", organizationId);
+        }
+        else
+        {
+            // Auto-fetch from UserService based on customer
+            _logger.LogDebug("Fetching organization for customer {CustomerId}", actualCustomerId);
+            organizationId = await _userServiceClient.GetUserOrganizationAsync(actualCustomerId);
+            
+            if (organizationId.HasValue)
+            {
+                _logger.LogDebug("Customer {CustomerId} belongs to organization {OrganizationId}", 
+                    actualCustomerId, organizationId.Value);
+            }
+        }
+
         var ticket = new Ticket
         {
-            CustomerId = customerId,
+            CustomerId = actualCustomerId,
             Title = request.Title,
             Description = request.Description,
             Priority = priority,
             Category = category,
-            Status = TicketStatus.New
+            Status = TicketStatus.New,
+            OrganizationId = organizationId
         };
 
         var createdTicket = await _repository.CreateAsync(ticket);
-        _logger.LogInformation("Ticket created successfully: {TicketId}", createdTicket.Id);
+        _logger.LogInformation("Ticket created successfully: {TicketId} for Customer: {CustomerId} with Organization: {OrganizationId}", 
+            createdTicket.Id, actualCustomerId, organizationId?.ToString() ?? "none");
 
         await PublishTicketCreatedEventAsync(createdTicket);
 
@@ -289,6 +347,8 @@ public class TicketServiceImpl : ITicketService
             Category: ticket.Category.ToString(),
             CustomerId: ticket.CustomerId,
             AssignedAgentId: ticket.AssignedAgentId,
+            OrganizationId: ticket.OrganizationId,
+            SlaId: ticket.SlaId,
             CreatedAt: ticket.CreatedAt,
             UpdatedAt: ticket.UpdatedAt,
             ResolvedAt: ticket.ResolvedAt,

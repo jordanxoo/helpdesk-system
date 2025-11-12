@@ -21,6 +21,7 @@ namespace UserService.Migrations
                     last_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     phone_number = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true)

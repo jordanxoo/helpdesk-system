@@ -26,6 +26,7 @@ public record UserDto(
     string FullName,
     string PhoneNumber,
     string Role,
+    Guid? OrganizationId,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     bool IsActive
@@ -45,4 +46,8 @@ public record UserFilterRequest(
     bool? IsActive,
     int Page = 1,
     int PageSize = 10
+);
+
+public record AssignOrganizationRequest(
+    Guid OrganizationId
 );

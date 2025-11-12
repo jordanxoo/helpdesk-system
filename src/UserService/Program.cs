@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Messaging;
 using UserService.Data;
 using UserService.Repositories;
 using UserService.Services;
+using UserService.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +34,10 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Dependency Injection - Services
 builder.Services.AddScoped<IUserService, UserServiceImpl>();
+
+// Messaging Settings
+builder.Services.Configure<Shared.Configuration.MessagingSettings>(
+    builder.Configuration.GetSection("MessagingSettings"));
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
@@ -94,6 +100,10 @@ builder.Services.AddCors(options =>
 // Health Checks - monitorowanie stanu serwisu
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
+
+// RabbitMQ Consumer
+builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
+builder.Services.AddHostedService<UserEventConsumer>();
 
 // Logging
 builder.Logging.ClearProviders();

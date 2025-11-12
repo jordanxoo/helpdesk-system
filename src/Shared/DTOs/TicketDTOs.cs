@@ -5,7 +5,9 @@ public record CreateTicketRequest(
     string Title,
     string Description,
     string Priority,    
-    string Category    
+    string Category,
+    Guid? CustomerId = null,        // Optional - for agents creating tickets on behalf of customers
+    Guid? OrganizationId = null     // Optional - manual override by agents/admins
 );
 
 public record UpdateTicketRequest(
@@ -36,6 +38,8 @@ public record TicketDto(
     string Category,
     Guid CustomerId,
     Guid? AssignedAgentId,
+    Guid? OrganizationId,
+    Guid? SlaId,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     DateTime? ResolvedAt,

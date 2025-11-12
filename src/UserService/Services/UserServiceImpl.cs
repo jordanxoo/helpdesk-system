@@ -89,6 +89,43 @@ public class UserServiceImpl : IUserService
         return MapToDto(createdUser);
     }
 
+    public async Task<UserDto> CreateAsync(CreateUserRequest request, Guid userId)
+    {
+        _logger.LogInformation("Creating user with specific ID: {UserId}, email: {Email}", userId, request.Email);
+
+        if (await _repository.GetByIdAsync(userId) != null)
+        {
+            throw new InvalidOperationException($"User with id {userId} already exists");
+        }
+        
+        if (await _repository.EmailExistsAsync(request.Email))
+        {
+            throw new InvalidOperationException($"User with email {request.Email} already exists");
+        }
+        
+        if (!Enum.TryParse<UserRole>(request.Role, out var role))
+        {
+            throw new ArgumentException($"Invalid role: {request.Role}");
+        }
+
+        var user = new User
+        {
+            Id = userId, // Używamy ID z AuthService
+            Email = request.Email,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            PhoneNumber = request.PhoneNumber,
+            Role = role,
+            IsActive = true
+        };
+
+        var createdUser = await _repository.CreateAsync(user);
+
+        _logger.LogInformation("User created successfully with id: {UserId}", createdUser.Id);
+
+        return MapToDto(createdUser);
+    }
+
 
     public async Task<UserDto> UpdateAsync(Guid id, UpdateUserRequest request)
     {
@@ -136,6 +173,26 @@ public class UserServiceImpl : IUserService
         _logger.LogInformation("User deleted successfully: {UserId}", id);
     }
 
+    public async Task<UserDto> AssignOrganizationAsync(Guid userId, Guid organizationId)
+    {
+        _logger.LogInformation("Assigning organization {OrganizationId} to user {UserId}", organizationId, userId);
+        
+        var user = await _repository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new KeyNotFoundException($"User with id {userId} not found");
+        }
+
+        user.OrganizationId = organizationId;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        var updatedUser = await _repository.UpdateAsync(user);
+        
+        _logger.LogInformation("Organization assigned successfully: User {UserId} -> Organization {OrganizationId}", userId, organizationId);
+        
+        return MapToDto(updatedUser);
+    }
+
     public async Task<bool> ExistsAsync(Guid id)
     {
         return await _repository.ExistsAsync(id);
@@ -150,6 +207,7 @@ public class UserServiceImpl : IUserService
             FullName: user.FullName,
             PhoneNumber: user.PhoneNumber,
             Role: user.Role.ToString(),
+            OrganizationId: user.OrganizationId,
             CreatedAt: user.CreatedAt,
             UpdatedAt: user.UpdatedAt,
             IsActive: user.IsActive);

@@ -33,4 +33,11 @@ public static class RoutingKeys
     /// Consumers: NotificationService
     /// </summary>
     public const string CommentAdded = "comment-added";
+    
+    /// <summary>
+    /// Event published when a new user registers.
+    /// Publisher: AuthService
+    /// Consumers: UserService
+    /// </summary>
+    public const string UserRegistered = "user.registered";
 }

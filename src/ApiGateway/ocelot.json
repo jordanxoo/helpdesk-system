@@ -41,6 +41,48 @@
       "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
       "RouteIsCaseSensitive": false,
       "Priority": 1
+    },
+    {
+      "DownstreamPathTemplate": "/api/organizations/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "ticket-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/organizations/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "RouteIsCaseSensitive": false,
+      "Priority": 1
+    },
+    {
+      "DownstreamPathTemplate": "/api/tags/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "ticket-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/tags/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "RouteIsCaseSensitive": false,
+      "Priority": 1
+    },
+    {
+      "DownstreamPathTemplate": "/api/slas/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "ticket-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/slas/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "RouteIsCaseSensitive": false,
+      "Priority": 1
     }
   ],
   "GlobalConfiguration": {

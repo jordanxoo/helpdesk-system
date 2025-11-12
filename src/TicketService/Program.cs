@@ -11,6 +11,7 @@ using TicketService.Repositories;
 using TicketService.Services;
 using Shared.Messaging;
 using Shared.Configuration;
+using Shared.HttpClients;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +37,17 @@ builder.Services.AddScoped<ISlaRepository, SlaRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 
 builder.Services.AddScoped<ITicketService, TicketServiceImpl>();
+
+// HTTP Client for UserService communication
+var userServiceUrl = builder.Configuration["Services:UserService:Url"] 
+    ?? throw new InvalidOperationException("UserService URL not configured");
+
+builder.Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(userServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.Add("User-Agent", "TicketService/1.0");
+});
 
 builder.Services.Configure<MessagingSettings>(
     builder.Configuration.GetSection("MessagingSettings"));

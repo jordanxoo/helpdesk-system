@@ -17,7 +17,8 @@ public record RegisterRequest(
     string Password,
     string FirstName,
     string LastName,
-    string PhoneNumber
+    string PhoneNumber,
+    string Role  // Customer, Agent, or Administrator
 );
 
 public record RefreshTokenRequest(
