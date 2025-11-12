@@ -40,4 +40,11 @@ public static class RoutingKeys
     /// Consumers: UserService
     /// </summary>
     public const string UserRegistered = "user.registered";
+    
+    /// <summary>
+    /// Event published when user profile is updated in AuthService.
+    /// Publisher: AuthService
+    /// Consumers: UserService
+    /// </summary>
+    public const string ProfileUpdated = "user.profile-updated";
 }

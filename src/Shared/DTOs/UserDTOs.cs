@@ -9,12 +9,23 @@ public record CreateUserRequest(
     string Role  // Use UserRoles constants: Customer, Agent, Administrator
 );
 
-
-public record UpdateUserRequest(
+/// <summary>
+/// Request for updating user profile data in AuthService.
+/// AuthService is the source of truth for: FirstName, LastName, PhoneNumber, Role.
+/// </summary>
+public record UpdateUserProfileRequest(
     string? FirstName,
     string? LastName,
     string? PhoneNumber,
-    string? Role,
+    string? Role
+);
+
+/// <summary>
+/// Request for updating user-specific data in UserService.
+/// Only OrganizationId and IsActive can be modified here.
+/// </summary>
+public record UpdateUserRequest(
+    Guid? OrganizationId,
     bool? IsActive
 );
 
