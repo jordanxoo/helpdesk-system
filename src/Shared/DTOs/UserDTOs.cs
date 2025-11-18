@@ -10,9 +10,10 @@ public record CreateUserRequest(
 );
 
 /// <summary>
-/// Request for updating user profile data in AuthService.
-/// AuthService is the source of truth for: FirstName, LastName, PhoneNumber, Role.
+/// DEPRECATED: Use UpdateUserRequest in UserService instead.
+/// AuthService no longer manages profile data - only authentication credentials.
 /// </summary>
+[Obsolete("Use UpdateUserRequest in UserService instead")]
 public record UpdateUserProfileRequest(
     string? FirstName,
     string? LastName,
@@ -21,10 +22,15 @@ public record UpdateUserProfileRequest(
 );
 
 /// <summary>
-/// Request for updating user-specific data in UserService.
-/// Only OrganizationId and IsActive can be modified here.
+/// Request for updating user data in UserService.
+/// UserService is the OWNER of all profile and business data.
+/// All fields are optional - only provided fields will be updated.
 /// </summary>
 public record UpdateUserRequest(
+    string? FirstName,
+    string? LastName,
+    string? PhoneNumber,
+    string? Role,
     Guid? OrganizationId,
     bool? IsActive
 );

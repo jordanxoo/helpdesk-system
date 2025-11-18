@@ -2,10 +2,15 @@ using Microsoft.AspNetCore.Identity;
 
 namespace AuthService.Data;
 
+/// <summary>
+/// ApplicationUser - Authentication Context ONLY
+/// Stores credentials and authentication-related data.
+/// Profile data (FirstName, LastName, etc.) is managed by UserService.
+/// </summary>
 public class ApplicationUser : IdentityUser
 {
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
+    // Email, PasswordHash inherited from IdentityUser - used for login
+
     public DateTime CreatedAt { get; set; }
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }

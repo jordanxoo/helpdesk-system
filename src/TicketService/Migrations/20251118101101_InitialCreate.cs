@@ -6,23 +6,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TicketService.Migrations
 {
     /// <inheritdoc />
-    public partial class AddOrganizationSlaAndEnhancements : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<Guid>(
-                name: "organization_id",
-                table: "tickets",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "sla_id",
-                table: "tickets",
-                type: "uuid",
-                nullable: true);
-
             migrationBuilder.CreateTable(
                 name: "slas",
                 columns: table => new
@@ -60,6 +48,66 @@ namespace TicketService.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_tags", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "organizations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    contact_email = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    contact_phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    sla_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_organizations", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_organizations_slas_sla_id",
+                        column: x => x.sla_id,
+                        principalTable: "slas",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tickets",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    priority = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    customer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    assigned_agent_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    sla_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    resolved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tickets", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_tickets_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_tickets_slas_sla_id",
+                        column: x => x.sla_id,
+                        principalTable: "slas",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -113,28 +161,25 @@ namespace TicketService.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "organizations",
+                name: "ticket_comments",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    contact_email = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    contact_phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    ticket_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    content = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    sla_id = table.Column<Guid>(type: "uuid", nullable: true)
+                    is_internal = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_organizations", x => x.id);
+                    table.PrimaryKey("PK_ticket_comments", x => x.id);
                     table.ForeignKey(
-                        name: "FK_organizations_slas_sla_id",
-                        column: x => x.sla_id,
-                        principalTable: "slas",
+                        name: "FK_ticket_comments_tickets_ticket_id",
+                        column: x => x.ticket_id,
+                        principalTable: "tickets",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -160,16 +205,6 @@ namespace TicketService.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tickets_organization_id",
-                table: "tickets",
-                column: "organization_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tickets_sla_id",
-                table: "tickets",
-                column: "sla_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_organizations_is_active",
@@ -238,41 +273,64 @@ namespace TicketService.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_ticket_comments_created_at",
+                table: "ticket_comments",
+                column: "created_at");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_comments_ticket_id",
+                table: "ticket_comments",
+                column: "ticket_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_comments_user_id",
+                table: "ticket_comments",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ticket_tags_ticket_id",
                 table: "ticket_tags",
                 column: "ticket_id");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_tickets_organizations_organization_id",
+            migrationBuilder.CreateIndex(
+                name: "ix_tickets_assigned_agent_id",
                 table: "tickets",
-                column: "organization_id",
-                principalTable: "organizations",
-                principalColumn: "id",
-                onDelete: ReferentialAction.SetNull);
+                column: "assigned_agent_id");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_tickets_slas_sla_id",
+            migrationBuilder.CreateIndex(
+                name: "ix_tickets_created_at",
                 table: "tickets",
-                column: "sla_id",
-                principalTable: "slas",
-                principalColumn: "id",
-                onDelete: ReferentialAction.SetNull);
+                column: "created_at");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tickets_customer_id",
+                table: "tickets",
+                column: "customer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tickets_organization_id",
+                table: "tickets",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tickets_priority",
+                table: "tickets",
+                column: "priority");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tickets_sla_id",
+                table: "tickets",
+                column: "sla_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tickets_status",
+                table: "tickets",
+                column: "status");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_tickets_organizations_organization_id",
-                table: "tickets");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_tickets_slas_sla_id",
-                table: "tickets");
-
-            migrationBuilder.DropTable(
-                name: "organizations");
-
             migrationBuilder.DropTable(
                 name: "ticket_attachments");
 
@@ -280,29 +338,22 @@ namespace TicketService.Migrations
                 name: "ticket_audit_logs");
 
             migrationBuilder.DropTable(
-                name: "ticket_tags");
+                name: "ticket_comments");
 
             migrationBuilder.DropTable(
-                name: "slas");
+                name: "ticket_tags");
 
             migrationBuilder.DropTable(
                 name: "tags");
 
-            migrationBuilder.DropIndex(
-                name: "ix_tickets_organization_id",
-                table: "tickets");
+            migrationBuilder.DropTable(
+                name: "tickets");
 
-            migrationBuilder.DropIndex(
-                name: "ix_tickets_sla_id",
-                table: "tickets");
+            migrationBuilder.DropTable(
+                name: "organizations");
 
-            migrationBuilder.DropColumn(
-                name: "organization_id",
-                table: "tickets");
-
-            migrationBuilder.DropColumn(
-                name: "sla_id",
-                table: "tickets");
+            migrationBuilder.DropTable(
+                name: "slas");
         }
     }
 }

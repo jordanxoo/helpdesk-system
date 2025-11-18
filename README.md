@@ -7,9 +7,9 @@ System Helpdesk zbudowany jako rozproszona aplikacja mikroservisowa, gotowa do d
 System składa się z następujących mikroservisów:
 
 ### Mikroservisy
-- **AuthService** (Port 5101) - Uwierzytelnianie i autoryzacja użytkowników (JWT, Identity)
+- **AuthService** (Port 5101) - Kontekst autentykacji: dane logowania (email, hasło), tokeny JWT
+- **UserService** (Port 5103) - Kontekst użytkownika: dane profilu (imię, nazwisko, telefon, rola) + dane biznesowe (organizacja, aktywność)
 - **TicketService** (Port 5102) - Zarządzanie zgłoszeniami helpdesk
-- **UserService** (Port 5103) - Zarządzanie profilami użytkowników
 - **NotificationService** (Port 5104) - Wysyłanie powiadomień (email, SMS)
 - **ApiGateway** (Port 5100) - Ocelot API Gateway dla routingu żądań
 

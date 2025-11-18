@@ -38,13 +38,7 @@ public static class RoutingKeys
     /// Event published when a new user registers.
     /// Publisher: AuthService
     /// Consumers: UserService
+    /// Contains full profile data - UserService creates user record.
     /// </summary>
     public const string UserRegistered = "user.registered";
-    
-    /// <summary>
-    /// Event published when user profile is updated in AuthService.
-    /// Publisher: AuthService
-    /// Consumers: UserService
-    /// </summary>
-    public const string ProfileUpdated = "user.profile-updated";
 }

@@ -33,13 +33,14 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// rejestracja nowego uzytkownika
+    /// Register new user - creates authentication credentials only.
+    /// Profile data is managed by UserService (synced via UserRegisteredEvent).
+    /// After registration, call GET /api/users/me to get full user profile.
     /// </summary>
     [HttpPost("register")]
-    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(AuthTokenResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-
-    public async Task<ActionResult<LoginResponse>> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<AuthTokenResponse>> Register([FromBody] RegisterRequest request)
     {
         _logger.LogInformation("Registration attempt for email: {Email}", request.Email);
 
@@ -47,17 +48,15 @@ public class AuthController : ControllerBase
 
         if (existingUser != null)
         {
-            _logger.LogWarning("Registration failed - user already exsists!: {Email}", request.Email);
+            _logger.LogWarning("Registration failed - user already exists: {Email}", request.Email);
             return BadRequest(new { message = "User with this email already exists" });
         }
 
+        // Create authentication user (credentials only)
         var user = new ApplicationUser
         {
             UserName = request.Email,
-            FirstName = request.FirstName,
-            LastName = request.LastName,
             Email = request.Email,
-            PhoneNumber = request.PhoneNumber,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -66,7 +65,6 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
         {
             _logger.LogWarning("Registration failed for email {Email}: {Errors}", request.Email, string.Join(",", result.Errors.Select(e => e.Description)));
-
             return BadRequest(new { message = "Registration failed", errors = result.Errors.Select(e => e.Description) });
         }
 
@@ -75,16 +73,17 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("User registered successfully: {Email}", request.Email);
 
-        // Publish UserRegisteredEvent dla UserService
+        // Publish UserRegisteredEvent with FULL profile data for UserService
         var userRegisteredEvent = new UserRegisteredEvent
         {
             UserId = Guid.Parse(user.Id),
             Email = user.Email!,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Role = request.Role.ToString()  // Use actual role from request, not hardcoded Customer
+            FirstName = request.FirstName,      // From request - not stored in Auth
+            LastName = request.LastName,        // From request - not stored in Auth
+            PhoneNumber = request.PhoneNumber,  // From request - not stored in Auth
+            Role = request.Role.ToString()
         };
-        
+
         try
         {
             await _messagePublisher.PublishAsync(userRegisteredEvent, Shared.Constants.RoutingKeys.UserRegistered);
@@ -93,48 +92,32 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to publish UserRegisteredEvent for user: {Email}", user.Email);
-            // Nie przerywamy procesu rejestracji - event jest nice-to-have
+            // Don't fail registration if event publishing fails
         }
 
-        //automatyczne logowanie
-        // po zalozeniu konta
+        // Auto-login after registration
         var roles = await _userManager.GetRolesAsync(user);
         var accessToken = _tokenService.GenerateAccessToken(user, roles);
         var refreshToken = _tokenService.GenerateRefreshToken();
         await _tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
 
-        var response = new LoginResponse(
+        var response = new AuthTokenResponse(
             Token: accessToken,
-
             RefreshToken: refreshToken,
-
-            ExpiresAt: DateTime.UtcNow.AddMinutes(60),
-
-            User: new UserDto(
-                Id: Guid.Parse(user.Id),
-                Email: user.Email!,
-                FirstName: user.FirstName,
-                LastName: user.LastName,
-                FullName: $"{user.FirstName} {user.LastName}",
-                PhoneNumber: user.PhoneNumber ?? string.Empty,
-                Role: roles.FirstOrDefault() ?? UserRole.Customer.ToString(),
-                OrganizationId: null,  // AuthService nie zna organizacji - zarządza UserService
-                CreatedAt: user.CreatedAt,
-                UpdatedAt: null,
-                IsActive: true
-            )
+            ExpiresAt: DateTime.UtcNow.AddMinutes(60)
         );
 
         return CreatedAtAction(nameof(Register), response);
     }
 
-    //logowanie uzytkownika
-
+    /// <summary>
+    /// Login user - verifies credentials and returns JWT token.
+    /// To get user profile, call GET /api/users/me with the token.
+    /// </summary>
     [HttpPost("login")]
-    [ProducesResponseType(typeof(LoginRequest), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthTokenResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-
-    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<AuthTokenResponse>> Login([FromBody] LoginRequest request)
     {
         _logger.LogInformation("Login attempt for email: {email}", request.Email);
         var user = await _userManager.FindByEmailAsync(request.Email);
@@ -153,31 +136,20 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid email or password" });
         }
 
-        _logger.LogInformation("user logged in successfully: {Email}", request.Email);
+        _logger.LogInformation("User logged in successfully: {Email}", request.Email);
 
-        //generujemy tokeny
+        // Generate JWT tokens
         var roles = await _userManager.GetRolesAsync(user);
         var accessToken = _tokenService.GenerateAccessToken(user, roles);
         var refreshToken = _tokenService.GenerateRefreshToken();
         await _tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
 
-        var response = new LoginResponse(
-              Token: accessToken,
-              RefreshToken: refreshToken,
-              ExpiresAt: DateTime.UtcNow.AddMinutes(60),
-              User: new UserDto(
-                  Id: Guid.Parse(user.Id),
-                  Email: user.Email!,
-                  FirstName: user.FirstName,
-                  LastName: user.LastName,
-                  FullName: $"{user.FirstName} {user.LastName}",
-                  PhoneNumber: user.PhoneNumber ?? string.Empty,
-                  Role: roles.FirstOrDefault() ?? UserRole.Customer.ToString(),
-                  OrganizationId: null,  // AuthService nie zna organizacji - zarządza UserService
-                  CreatedAt: user.CreatedAt,
-                  UpdatedAt: null,
-                  IsActive: true
-              ));
+        var response = new AuthTokenResponse(
+            Token: accessToken,
+            RefreshToken: refreshToken,
+            ExpiresAt: DateTime.UtcNow.AddMinutes(60)
+        );
+
         return Ok(response);
     }
 

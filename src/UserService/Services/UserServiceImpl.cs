@@ -128,14 +128,13 @@ public class UserServiceImpl : IUserService
 
 
     /// <summary>
-    /// Updates UserService-specific fields only (OrganizationId, IsActive).
-    /// Profile data (firstName, lastName, phoneNumber, role) is managed by AuthService.
-    /// Changes from AuthService are synced via ProfileUpdatedEvent.
+    /// Updates user data - UserService is the OWNER of all profile and business data.
+    /// All fields are optional - only provided fields will be updated.
     /// </summary>
     public async Task<UserDto> UpdateAsync(Guid id, UpdateUserRequest request)
     {
-        _logger.LogInformation("Updating UserService-specific fields for user: {UserId}", id);
-        
+        _logger.LogInformation("Updating user data for user: {UserId}", id);
+
         var user = await _repository.GetByIdAsync(id);
         if (user == null)
         {
@@ -144,12 +143,41 @@ public class UserServiceImpl : IUserService
 
         var hasChanges = false;
 
+        // Update profile fields (UserService is now the owner)
+        if (!string.IsNullOrWhiteSpace(request.FirstName) && user.FirstName != request.FirstName)
+        {
+            user.FirstName = request.FirstName;
+            hasChanges = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.LastName) && user.LastName != request.LastName)
+        {
+            user.LastName = request.LastName;
+            hasChanges = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber) && user.PhoneNumber != request.PhoneNumber)
+        {
+            user.PhoneNumber = request.PhoneNumber;
+            hasChanges = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Role))
+        {
+            if (Enum.TryParse<UserRole>(request.Role, out var newRole) && user.Role != newRole)
+            {
+                user.Role = newRole;
+                hasChanges = true;
+            }
+        }
+
+        // Update business fields
         if (request.OrganizationId.HasValue && user.OrganizationId != request.OrganizationId.Value)
         {
             user.OrganizationId = request.OrganizationId.Value;
             hasChanges = true;
         }
-        
+
         if (request.IsActive.HasValue && user.IsActive != request.IsActive.Value)
         {
             user.IsActive = request.IsActive.Value;
@@ -164,9 +192,9 @@ public class UserServiceImpl : IUserService
 
         user.UpdatedAt = DateTime.UtcNow;
         var updatedUser = await _repository.UpdateAsync(user);
-        
+
         _logger.LogInformation("User updated successfully: {UserId}", id);
-        
+
         return MapToDto(updatedUser);
     }
 
