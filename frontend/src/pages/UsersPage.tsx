@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {Card,CardContent,CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { mockUsers } from "@/data/mockData";
-import {Users, UserPlus, Search, Edit, Trash2, CheckCircle, XCircle} from  'lucide-react';
+import { Users, UserPlus, Search, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import Layout from "@/components/ui/Layout";
 
 export default function UsersPage(){
     const navigate = useNavigate();
@@ -76,42 +77,7 @@ export default function UsersPage(){
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-            
-            <nav className="bg-white border-b border-gray-200 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center space-x-8">
-                            <div className="text-2xl font-bold text-slate-900">
-                                HelpdeskSystem
-                            </div>
-                            <div className="hidden md:flex space-x-4">
-                                <Button 
-                                    variant="ghost" 
-                                    onClick={() => navigate('/dashboard')}
-                                >
-                                    Dashboard
-                                </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    onClick={() => navigate('/tickets')}
-                                >
-                                    Zgłoszenia
-                                </Button>
-                                <Button 
-                                    variant="default"
-                                >
-                                    Użytkownicy
-                                </Button>
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                            Wyloguj
-                        </Button>
-                    </div>
-                </div>
-            </nav>
-
+        <Layout currentPage="/users">
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 
                 <div className="flex justify-between items-center mb-6">
@@ -270,6 +236,6 @@ export default function UsersPage(){
                     </CardContent>
                 </Card>
             </main>
-        </div>
+        </Layout>
     );
 }

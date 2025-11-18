@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, UserPlus } from 'lucide-react';
+import Layout from '@/components/ui/Layout';
 
 export default function CreateUserPage() {
     const navigate = useNavigate();
@@ -86,34 +87,7 @@ export default function CreateUserPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-            {/* Navigation */}
-            <nav className="bg-white border-b border-gray-200 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center space-x-8">
-                            <div className="text-2xl font-bold text-slate-900">
-                                HelpdeskSystem
-                            </div>
-                            <div className="hidden md:flex space-x-4">
-                                <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-                                    Dashboard
-                                </Button>
-                                <Button variant="ghost" onClick={() => navigate('/tickets')}>
-                                    Zgłoszenia
-                                </Button>
-                                <Button variant="default" onClick={() => navigate('/users')}>
-                                    Użytkownicy
-                                </Button>
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                            Wyloguj
-                        </Button>
-                    </div>
-                </div>
-            </nav>
-
+        <Layout currentPage="/users">
             <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <Button 
                     variant="ghost" 
@@ -303,6 +277,6 @@ export default function CreateUserPage() {
                     </CardContent>
                 </Card>
             </main>
-        </div>
+        </Layout>
     );
 }

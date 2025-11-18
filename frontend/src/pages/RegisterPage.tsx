@@ -3,10 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@radix-ui/react-label";
 import {Card, CardContent, CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
-import {Link} from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
+import { authService } from '@/services/authService';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function RegisterPage()
 {
+    const navigate = useNavigate();
     const [formData,setFormData] = useState({
         email: '',
         password: '',
@@ -16,11 +19,48 @@ export default function RegisterPage()
         phoneNumber: ' ',
 
     });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Register attempt: ', formData);
-        //TODO POLACZENIE Z API
+        setError('');
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Hasła nie są identyczne');
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setError('Hasło musi mieć co najmniej 6 znaków');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await authService.register({
+                email: formData.email.trim(),
+                password: formData.password,
+                firstName: formData.firstName.trim(),
+                lastName: formData.lastName.trim(),
+                phoneNumber: formData.phoneNumber.trim(),
+            });
+            
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('user', JSON.stringify(response.user));
+            
+            setSuccess(true);
+            setTimeout(() => {
+                navigate('/dashboard');
+            }, 1500);
+        } catch (err: any) {
+            console.error('Registration failed:', err);
+            setError(err.response?.data?.message || 'Nie udało się utworzyć konta');
+        } finally {
+            setLoading(false);
+        }
     };
     const handleChange = (e:React.ChangeEvent<HTMLInputElement>) =>
     {
@@ -115,8 +155,23 @@ export default function RegisterPage()
                                 required
                                 />
                             </div>
-                            <Button type="submit" className="w-full">
-                                Zarejestruj się
+
+                            {error && (
+                                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-md col-span-2">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <span>{error}</span>
+                                </div>
+                            )}
+
+                            {success && (
+                                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-md col-span-2">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span>Konto utworzone pomyślnie! Przekierowywanie...</span>
+                                </div>
+                            )}
+
+                            <Button type="submit" className="w-full col-span-2" disabled={loading || success}>
+                                {loading ? 'Tworzenie konta...' : success ? 'Sukces!' : 'Zarejestruj się'}
                             </Button>
 
                             <div className="text-center text-sm text-gray-600">

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { mockUsers } from '@/data/mockData';
 import type { User } from '@/types/user.types';
+import Layout from '@/components/ui/Layout';
 
 export default function EditUserPage() {
     const navigate = useNavigate();
@@ -135,34 +136,7 @@ export default function EditUserPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-            {/* Navigation */}
-            <nav className="bg-white border-b border-gray-200 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center space-x-8">
-                            <div className="text-2xl font-bold text-slate-900">
-                                HelpdeskSystem
-                            </div>
-                            <div className="hidden md:flex space-x-4">
-                                <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-                                    Dashboard
-                                </Button>
-                                <Button variant="ghost" onClick={() => navigate('/tickets')}>
-                                    Zgłoszenia
-                                </Button>
-                                <Button variant="default" onClick={() => navigate('/users')}>
-                                    Użytkownicy
-                                </Button>
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                            Wyloguj
-                        </Button>
-                    </div>
-                </div>
-            </nav>
-
+        <Layout currentPage="/users">
             <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <Button 
                     variant="ghost" 
@@ -340,6 +314,6 @@ export default function EditUserPage() {
                     </CardContent>
                 </Card>
             </main>
-        </div>
+        </Layout>
     );
 }
