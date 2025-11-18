@@ -63,10 +63,8 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
-// Controllers
 builder.Services.AddControllers();
 
-// Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -77,7 +75,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API do zarządzania użytkownikami w systemie Helpdesk"
     });
     
-    // XML Comments dla lepszej dokumentacji
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -86,7 +83,6 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-// CORS (na potrzeby developerskie)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -97,22 +93,15 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Health Checks - monitorowanie stanu serwisu
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
-// RabbitMQ Consumer
-builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
-builder.Services.AddHostedService<UserEventConsumer>();
-
-// Logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
 var app = builder.Build();
 
-// Database Migration
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
@@ -129,9 +118,6 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-// Middleware Pipeline
-
-// Swagger w Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -142,11 +128,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// CORS
 app.UseCors("AllowAll");
 
 // HTTPS Redirection - nie potrzebne (ALB robi SSL termination w AWS)
-// app.UseHttpsRedirection(); // USUNIĘTE
+// app.UseHttpsRedirection();
 
 // Authentication & Authorization
 app.UseAuthentication();
