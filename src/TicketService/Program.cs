@@ -218,3 +218,6 @@ public class MockMessagePublisher : IMessagePublisher
         return Task.CompletedTask;
     }
 }
+
+public partial class Program { }
+
