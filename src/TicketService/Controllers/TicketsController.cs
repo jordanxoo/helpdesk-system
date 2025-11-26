@@ -255,4 +255,26 @@ public class TicketsController : ControllerBase
             return NotFound(new { message = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Pobiera historię zmian ticketa (audit log)
+    /// </summary>
+    [HttpGet("{id}/history")]
+    [Authorize(Roles = "Agent,Administrator")]
+    [ProducesResponseType(typeof(List<TicketAuditLogDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<TicketAuditLogDto>>> GetHistory(Guid id)
+    {
+        _logger.LogInformation("GET /api/tickets/{Id}/history", id);
+
+        try
+        {
+            var history = await _ticketService.GetHistoryAsync(id);
+            return Ok(history);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
 }

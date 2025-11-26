@@ -20,4 +20,6 @@ public interface ITicketService
     //operacje na komentarzach
     Task<TicketDto> AddCommentAsync(Guid ticketId, Guid userId, AddCommentRequest request);
     
+    // Historia zmian ticketa (audit log)
+    Task<List<TicketAuditLogDto>> GetHistoryAsync(Guid ticketId);
 }

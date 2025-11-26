@@ -30,6 +30,9 @@ builder.Services.AddDbContext<TicketDbContext>(options =>
         }
     ));
 
+// HttpContext accessor for getting current user in services
+builder.Services.AddHttpContextAccessor();
+
 // Dependency Injection
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
