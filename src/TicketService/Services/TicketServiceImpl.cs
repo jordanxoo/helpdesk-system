@@ -268,7 +268,12 @@ public class TicketServiceImpl : ITicketService
             throw new KeyNotFoundException($"Ticket with id {id} not found");
         }
 
+        // Store old values for audit
+        var oldTitle = ticket.Title;
+        var oldDescription = ticket.Description;
         var oldStatus = ticket.Status.ToString();
+        var oldPriority = ticket.Priority.ToString();
+        var oldAgentId = ticket.AssignedAgentId?.ToString();
 
         if (!string.IsNullOrWhiteSpace(request.Title))
         {
@@ -300,9 +305,31 @@ public class TicketServiceImpl : ITicketService
         var updatedTicket = await _repository.UpdateAsync(ticket);
         _logger.LogInformation("Ticket updated successfully: {TicketId}", id);
 
+        // Audit log for each changed field
+        if (oldTitle != updatedTicket.Title)
+        {
+            await AddAuditLogAsync(id, AuditAction.Updated, "Title", oldTitle, updatedTicket.Title);
+        }
+
+        if (oldDescription != updatedTicket.Description)
+        {
+            await AddAuditLogAsync(id, AuditAction.Updated, "Description", "(changed)", "(changed)");
+        }
+
         if (oldStatus != updatedTicket.Status.ToString())
         {
+            await AddAuditLogAsync(id, AuditAction.StatusChanged, "Status", oldStatus, updatedTicket.Status.ToString());
             await PublishTicketStatusChangedEventAsync(updatedTicket, oldStatus);
+        }
+
+        if (oldPriority != updatedTicket.Priority.ToString())
+        {
+            await AddAuditLogAsync(id, AuditAction.PriorityChanged, "Priority", oldPriority, updatedTicket.Priority.ToString());
+        }
+
+        if (oldAgentId != updatedTicket.AssignedAgentId?.ToString())
+        {
+            await AddAuditLogAsync(id, AuditAction.Assigned, "AssignedAgentId", oldAgentId, updatedTicket.AssignedAgentId?.ToString());
         }
 
         return MapToDto(updatedTicket);
