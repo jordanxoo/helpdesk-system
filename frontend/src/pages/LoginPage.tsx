@@ -3,15 +3,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@radix-ui/react-label";
 import {Card, CardContent, CardDescription,CardHeader, CardTitle} from '@/components/ui/card';
+import { useNavigate, Link } from 'react-router-dom';
+import { authService } from '@/services/authService';
+import { AlertCircle } from 'lucide-react';
 
 export default function LoginPage()
 {
+    const navigate = useNavigate();
     const [email,setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Login: ", {email,password});
+        setError('');
+        setLoading(true);
+
+        try {
+            const response = await authService.login({ email, password });
+            
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('user', JSON.stringify(response.user));
+            
+            navigate('/dashboard');
+        } catch (err: any) {
+            console.error('Login failed:', err);
+            setError(err.response?.data?.message || 'Nieprawidłowy email lub hasło');
+        } finally {
+            setLoading(false);
+        }
     };
     return  (
         <div className = "min-h-screen flex items-center justify-center bg-gradient-to-br from slate-900 via-slate-800 to-slate-900 p4">
@@ -48,10 +69,20 @@ export default function LoginPage()
                                 required
                                 />
                             </div>
-                            <Button type = "submit" className="w-full">Zaloguj się</Button>
+
+                            {error && (
+                                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-md">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <span>{error}</span>
+                                </div>
+                            )}
+
+                            <Button type="submit" className="w-full" disabled={loading}>
+                                {loading ? 'Logowanie...' : 'Zaloguj się'}
+                            </Button>
                             <div className="text-center text-sm text-muted-foreground">Nie masz konta {' '}
-                                <a href = "#" className="text-primary hover:underline font-medium">
-                                    Zarejestruj się</a> 
+                                <Link to="/register" className="text-primary hover:underline font-medium">
+                                    Zarejestruj się</Link> 
                                     </div>
                          </form>
                          </CardContent>
