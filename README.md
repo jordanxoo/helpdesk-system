@@ -215,15 +215,27 @@ dotnet ef database update --project src/AuthService
 
 ---
 
-### Migracje Entity Framework
+### 🔀 Clean Separation: AuthService vs UserService
 
-```bash
-# Dodanie migracji
-dotnet ef migrations add InitialCreate --project src/AuthService
+#### Architektura
+- **AuthService** - TYLKO credentials (email, hasło) + tokeny JWT
+- **UserService** - WŁAŚCICIEL danych profilu (imię, nazwisko, telefon, rola) + dane biznesowe
 
-# Aktualizacja bazy danych
-dotnet ef database update --project src/AuthService
-```
+#### Dlaczego duplikacja niektórych danych?
+| Serwis | Rola | Email |
+|--------|------|-------|
+| AuthService | Uprawnienie (authorization) | Login (credential) |
+| UserService | Funkcja biznesowa | Dana kontaktowa |
+
+To świadoma decyzja - te same dane mają różny kontekst w różnych serwisach.
+
+#### Fail-safe Registration
+Rejestracja jest **atomowa** - jeśli publikacja eventu do RabbitMQ się nie powiedzie:
+1. User jest usuwany z AuthService (rollback)
+2. Frontend dostaje błąd 500
+3. Brak desync między serwisami
+
+---
 
 ## 📊 Message Queue
 
