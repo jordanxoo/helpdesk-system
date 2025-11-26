@@ -91,8 +91,9 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to publish UserRegisteredEvent for user: {Email}", user.Email);
-            // Don't fail registration if event publishing fails
+            _logger.LogError(ex, "Failed to publish UserRegisteredEvent, rolling back user creation for: {Email}", user.Email);
+            await _userManager.DeleteAsync(user);
+            return StatusCode(500, new { message = "Registration failed - please try again" });
         }
 
         // Auto-login after registration
