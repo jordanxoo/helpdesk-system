@@ -25,6 +25,7 @@ export interface RegisterRequest
     firstName: string;
     lastName: string;
     phoneNumber: string;
+    role: string
 }
 
 export interface LoginResponse

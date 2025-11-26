@@ -214,14 +214,16 @@ export default function CreateTicketPage()
                   <SelectTrigger>
                     <SelectValue placeholder="Wybierz kategorię" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Techniczny">Techniczny</SelectItem>
-                    <SelectItem value="Pytanie">Pytanie</SelectItem>
-                    <SelectItem value="Błąd">Błąd</SelectItem>
-                    <SelectItem value="Prośba o funkcję">Prośba o funkcję</SelectItem>
-                    <SelectItem value="Inny">Inny</SelectItem>
-                  </SelectContent>
-                </Select>
+                 <SelectContent>
+               
+                <SelectItem value="Hardware">Sprzęt (Hardware)</SelectItem>
+                <SelectItem value="Software">Oprogramowanie (Software)</SelectItem>
+                <SelectItem value="Network">Sieć (Network)</SelectItem>
+                <SelectItem value="Security">Bezpieczeństwo</SelectItem>
+                <SelectItem value="Account">Problemy z kontem</SelectItem>
+                <SelectItem value="Other">Inne</SelectItem>
+              </SelectContent>
+                              </Select>
               </div>
 
               {/* Buttons */}

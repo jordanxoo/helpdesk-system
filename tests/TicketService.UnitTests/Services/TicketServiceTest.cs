@@ -109,7 +109,31 @@ public class TicketServiceTests
     }
 
 
+    [Fact]
 
+    public async Task CreateAsync_ShouldCreateTicket_EvenIfUserServiceIsDown()
+    {
+        var request = new CreateTicketRequest("Awaria","Test Resilience","High","Hardware",null,null);
+        var userID = Guid.NewGuid();
+
+        _ticketRepoMock.CreateAsync(Arg.Any<Ticket>()).Returns(new Ticket{
+            Id = Guid.NewGuid(),
+            Title =request.Title,
+            Status = TicketStatus.New
+        });
+
+        _userClientMock.GetUserOrganizationAsync(Arg.Any<Guid>())
+        .Returns(Task.FromException<Guid?>(new HttpRequestException("Connection refused")));
+
+        var result = await _sut.CreateAsync(userID, "Customer",request);
+
+
+        result.Should().NotBeNull();
+        result.Title.Should().Be("Awaria");
+        result.OrganizationId.Should().Be(null);
+
+        await _ticketRepoMock.Received(1).CreateAsync(Arg.Any<Ticket>());
+        }
 
     
     

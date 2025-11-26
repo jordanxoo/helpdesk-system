@@ -48,7 +48,7 @@ public class TicketStatusTests
 
         var result = await _sut.ChangeStatusAsync(ticketId,"InProgress");
 
-        result.Should().Be("InProgress");
+        result.Status.Should().Be("InProgress");
 
 
         await _repositoryMock.Received(1).UpdateAsync(Arg.Is<Ticket>(t => t.Status == TicketStatus.InProgress));

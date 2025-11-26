@@ -167,13 +167,19 @@ public class TicketServiceImpl : ITicketService
         {
             // Auto-fetch from UserService based on customer
             _logger.LogDebug("Fetching organization for customer {CustomerId}", actualCustomerId);
-            organizationId = await _userServiceClient.GetUserOrganizationAsync(actualCustomerId);
-            
-            if (organizationId.HasValue)
+            try{
+                organizationId = await _userServiceClient.GetUserOrganizationAsync(actualCustomerId);
+                if (organizationId.HasValue)
+                {
+                    _logger.LogDebug("Customer {CustomerId} belongs to organization {OrganizationId}", 
+                        actualCustomerId, organizationId.Value);
+                }
+            }catch(Exception ex)
             {
-                _logger.LogDebug("Customer {CustomerId} belongs to organization {OrganizationId}", 
-                    actualCustomerId, organizationId.Value);
+               _logger.LogError(ex, "Failed to fetch organization for customer {CustomerId}. Proceeding without OrganizationId.", actualCustomerId);
+                organizationId = null;
             }
+           
         }
 
         var ticket = new Ticket

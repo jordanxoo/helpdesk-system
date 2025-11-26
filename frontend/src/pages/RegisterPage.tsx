@@ -46,6 +46,7 @@ export default function RegisterPage()
                 firstName: formData.firstName.trim(),
                 lastName: formData.lastName.trim(),
                 phoneNumber: formData.phoneNumber.trim(),
+                role: 'Customer'
             });
             
             localStorage.setItem('token', response.token);
