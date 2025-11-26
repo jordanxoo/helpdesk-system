@@ -27,5 +27,11 @@ export interface UpdateUserRequest{
     lastName?: string;
     phoneNumber?: string;
     role?: string;
-    isActive?: string;
+    isActive?: boolean;
+}
+
+export interface UpdateProfileRequest {
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
 }

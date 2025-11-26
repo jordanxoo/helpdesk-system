@@ -12,6 +12,8 @@ using Xunit;
 using NSubstitute;
 using NSubstitute.Core;
 using Shared.Models;
+using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authentication;
 
 public class TicketServiceFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
@@ -35,10 +37,13 @@ public class TicketServiceFactory : WebApplicationFactory<Program>, IAsyncLifeti
             services.RemoveAll(typeof(IMessagePublisher));
             services.AddSingleton(publisherMock);
 
-            services.AddControllers(options =>
+            services.AddAuthentication(options =>
             {
-                options.Filters.Add(new FakeUserFilter());
-            });
+            options.DefaultAuthenticateScheme = "testScheme";
+            options.DefaultChallengeScheme = "testScheme";
+            }).AddScheme<AuthenticationSchemeOptions,TestAuthHandler>("testScheme", options => {});
+
+          
         });
     }
 

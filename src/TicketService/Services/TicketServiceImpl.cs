@@ -114,12 +114,12 @@ public class TicketServiceImpl : ITicketService
     {
         _logger.LogInformation("Creating new ticket - User: {UserId}, Role: {Role}", userId, userRole);
 
-        if (!Enum.TryParse<TicketPriority>(request.Priority, out var priority))
+        if (!Enum.TryParse<TicketPriority>(request.Priority,true, out var priority))
         {
             throw new ArgumentException($"Invalid priority: {request.Priority}");
         }
 
-        if (!Enum.TryParse<TicketCategory>(request.Category, out var category))
+        if (!Enum.TryParse<TicketCategory>(request.Category,true, out var category))
         {
             throw new ArgumentException($"Invalid category: {request.Category}");
         }

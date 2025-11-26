@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ticketService } from "@/services/ticketService";
 
 export default function CreateTicketPage()
 {
@@ -17,7 +18,7 @@ export default function CreateTicketPage()
         title: '',
         description: '',
         priority: 'Medium',
-        category: 'Techniczny',
+        category: 'Hardware',
     });
 
     const [errors, setErrors] = useState<Record<string,string>>({});
@@ -49,11 +50,12 @@ export default function CreateTicketPage()
         {
             setIsSubmitting(true);
 
-            //TODO ZMIANA NA API CALL
-            //await ticketService.createTicket(formData);
-
-            //symulacja API
-            await new Promise(resolve => setTimeout(resolve,1000));
+           await ticketService.createTicket({
+            title: formData.title,
+            description: formData.description,
+            priority: formData.priority,
+            category: formData.category
+           } as any);
 
             console.log('Ticket created: ', formData);
 
@@ -62,7 +64,7 @@ export default function CreateTicketPage()
         catch(error)
         {
             console.error('Failed to create ticket: ',error);
-            alert('Nie udało się utworzyć zgłoszenia. Sprobuj ponownie.');
+            // alert('Nie udało się utworzyć zgłoszenia. Sprobuj ponownie.');
         }finally
         {
             setIsSubmitting(false);

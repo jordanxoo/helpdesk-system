@@ -26,7 +26,13 @@ export default function LoginPage()
             localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
             
-            navigate('/dashboard');
+            if(response.user.role === "Administrator")
+            {
+                navigate('/admin');
+            }else
+            {
+                navigate('/dashboard');
+            }
         } catch (err: any) {
             console.error('Login failed:', err);
             setError(err.response?.data?.message || 'Nieprawidłowy email lub hasło');

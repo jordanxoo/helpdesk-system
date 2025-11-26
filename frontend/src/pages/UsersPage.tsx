@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mockUsers } from "@/data/mockData";
-import { Users, UserPlus, Search, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+//import { mockUsers } from "@/data/mockData";
+import { Users, UserPlus, Search, Edit, Trash2, CheckCircle, XCircle} from "lucide-react";
 import Layout from "@/components/ui/Layout";
-
+import { userService } from "@/services/userService";
+import type { User} from "@/types/user.types";
 export default function UsersPage(){
     const navigate = useNavigate();
-    const [users,setUsers] = useState(mockUsers);
+    const [users,setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
 
@@ -27,10 +30,45 @@ export default function UsersPage(){
     //     }
     // }, [isAdmin, navigate]);
 
+    useEffect(() => 
+    {
+        loadUsers();
+    }, []);
+
+
+    const loadUsers= async () => {
+        try{
+            setLoading(true);
+            const response = await userService.getAllUsers();
+
+            const data = (response as any).users || (response as any).items || response;
+
+            if(Array.isArray(data))
+            {
+                setUsers(data);
+            }else{
+                setUsers([]);
+                console.error("Otrzymano nieprawidłowy format danych: ",data);
+            }
+        }catch(error)
+        {
+            console.error("Nie udało się pobrać użytkowników: ",error);
+
+        }finally
+        {
+            setLoading(false);
+        }
+    }
+
+
     const filteredUsers = users.filter( u => {
+
+        const fullName = u.fullName || `${u.firstName} ${u.lastName}` || '';
+        const email = u.email || '';
+
         const matchesSearch = 
-        u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchQuery.toLowerCase());
+        fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesRole = roleFilter === 'all' || u.role === roleFilter;
 
         return matchesSearch && matchesRole;
@@ -60,20 +98,31 @@ export default function UsersPage(){
                 return role;
         }
     };
-    const handleDeleteUser = (userId: string) => {
-        if (confirm('Czy na pewno chcesz usunąć tego użytkownika?')) {
-            setUsers(users.filter(u => u.id !== userId));
-            // TODO: Replace with real API call
-            // await userService.deleteUser(userId);
+    const handleDeleteUser = async (userId: string) => {
+        if (!confirm('Czy na pewno chcesz usunąć tego użytkownika?')) {   
+            return;
+        }    
+        try{
+            await userService.deleteUser(userId);
+            setUsers(users.filter(u => u.id != userId));
+        }catch(error)
+        {
+            console.error("Błąd podczas usuwania użytkownika: ",error);
         }
     };
 
-    const handleToggleActive = (userId: string) => {
-        setUsers(users.map(u => 
-            u.id === userId ? { ...u, isActive: !u.isActive } : u
-        ));
-        // TODO: Replace with real API call
-        // await userService.updateUser(userId, { isActive: !user.isActive });
+    const handleToggleActive = async (user:User) => {
+        try{
+            const newStatus = !user.isActive;
+            await userService.updateUser(user.id,{isActive: newStatus});
+
+            setUsers(users.map( u => u.id === user.id ? {...u, isActive: newStatus}: u));
+
+        }catch(error)
+        {
+            console.error("Błąd aktualizacji statusu: ",error);
+            alert("Nie udało się zmienić statusu użytkownika");
+        }
     };
 
     return (
@@ -86,7 +135,7 @@ export default function UsersPage(){
                         <div>
                             <h1 className="text-3xl font-bold text-slate-900">Zarządzanie użytkownikami</h1>
                             <p className="text-gray-600 mt-1">
-                                Znaleziono {filteredUsers.length} użytkowników
+                                {loading ? "Ładowanie..." : `Znaleziono ${filteredUsers.length} użytkowników`}
                             </p>
                         </div>
                     </div>
@@ -140,99 +189,104 @@ export default function UsersPage(){
 
                 <Card>
                     <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Użytkownik</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Telefon</TableHead>
-                                    <TableHead>Rola</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Data utworzenia</TableHead>
-                                    <TableHead className="text-right">Akcje</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredUsers.length === 0 ? (
+                        {loading ? (
+                            <div className="text-center py-12 text-gray-500">Ładowanie danych...</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                                            Nie znaleziono użytkowników
-                                        </TableCell>
+                                        <TableHead>Użytkownik</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Telefon</TableHead>
+                                        <TableHead>Rola</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Data utworzenia</TableHead>
+                                        <TableHead className="text-right">Akcje</TableHead>
                                     </TableRow>
-                                ) : (
-                                    filteredUsers.map((user) => (
-                                        <TableRow key={user.id} className="hover:bg-gray-50">
-                                            <TableCell>
-                                                <div>
-                                                    <div className="font-semibold text-gray-900">
-                                                        {user.fullName}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        ID: {user.id}
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-gray-700">
-                                                {user.email}
-                                            </TableCell>
-                                            <TableCell className="text-gray-700">
-                                                {user.phoneNumber || '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge className={getRoleBadgeVariant(user.role)}>
-                                                    {getRoleLabel(user.role)}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {user.isActive ? (
-                                                    <div className="flex items-center text-green-600">
-                                                        <CheckCircle className="h-4 w-4 mr-1" />
-                                                        Aktywny
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center text-red-600">
-                                                        <XCircle className="h-4 w-4 mr-1" />
-                                                        Nieaktywny
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-gray-700">
-                                                {new Date(user.createdAt).toLocaleDateString('pl-PL')}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => navigate(`/users/${user.id}/edit`)}
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant={user.isActive ? "outline" : "default"}
-                                                        size="sm"
-                                                        onClick={() => handleToggleActive(user.id)}
-                                                    >
-                                                        {user.isActive ? (
-                                                            <XCircle className="h-4 w-4" />
-                                                        ) : (
-                                                            <CheckCircle className="h-4 w-4" />
-                                                        )}
-                                                    </Button>
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={() => handleDeleteUser(user.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredUsers.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                                                Nie znaleziono użytkowników
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : (
+                                        filteredUsers.map((user) => (
+                                            <TableRow key={user.id} className="hover:bg-gray-50">
+                                                <TableCell>
+                                                    <div>
+                                                        <div className="font-semibold text-gray-900">
+                                                            {user.fullName}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">
+                                                            ID: {user.id}
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-gray-700">
+                                                    {user.email}
+                                                </TableCell>
+                                                <TableCell className="text-gray-700">
+                                                    {user.phoneNumber || '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className={getRoleBadgeVariant(user.role)}>
+                                                        {getRoleLabel(user.role)}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {user.isActive ? (
+                                                        <div className="flex items-center text-green-600">
+                                                            <CheckCircle className="h-4 w-4 mr-1" />
+                                                            Aktywny
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center text-red-600">
+                                                            <XCircle className="h-4 w-4 mr-1" />
+                                                            Nieaktywny
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-gray-700">
+                                                    {new Date(user.createdAt).toLocaleDateString('pl-PL')}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => navigate(`/users/${user.id}/edit`)}
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant={user.isActive ? "outline" : "default"}
+                                                            size="sm"
+                                                            onClick={() => handleToggleActive(user)}
+                                                            title={user.isActive ? "Dezaktywuj" : "Aktywuj"}
+                                                        >
+                                                            {user.isActive ? (
+                                                                <XCircle className="h-4 w-4" />
+                                                            ) : (
+                                                                <CheckCircle className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => handleDeleteUser(user.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
                     </CardContent>
                 </Card>
             </main>

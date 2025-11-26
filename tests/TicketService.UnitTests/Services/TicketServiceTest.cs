@@ -105,7 +105,7 @@ public class TicketServiceTests
 
         var action = async () => await _sut.CreateAsync(Guid.NewGuid(),"Agent",request);
 
-        await action.Should().ThrowAsync<ArgumentException>().WithMessage("Agents and Administrators must specify CustomerID");
+        await action.Should().ThrowAsync<ArgumentException>().WithMessage("Agents and Administrators must specify CustomerID when creating tickets");
     }
 
 
