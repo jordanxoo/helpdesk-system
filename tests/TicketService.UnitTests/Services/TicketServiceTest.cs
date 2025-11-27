@@ -23,7 +23,6 @@ public class TicketServiceTests
 {
     
     private readonly ITicketRepository _ticketRepoMock = Substitute.For<ITicketRepository>();
-    private readonly TicketDbContext _dbContextMock = Substitute.For<TicketDbContext>();
     private readonly IMessagePublisher _messagePublisherMock = Substitute.For<IMessagePublisher>();
     private readonly IMessageConsumer _messageConsumerMock = Substitute.For<IMessageConsumer>();
     private readonly IUserServiceClient _userClientMock = Substitute.For<IUserServiceClient>();
@@ -37,7 +36,7 @@ public class TicketServiceTests
 
     public TicketServiceTests()
     {
-        _sut  = new TicketServiceImpl(_ticketRepoMock, _dbContextMock,
+        _sut  = new TicketServiceImpl(_ticketRepoMock, null!,
         _messagePublisherMock,_userClientMock, _httpContextAccessor, _loggerMock);
     }
 
