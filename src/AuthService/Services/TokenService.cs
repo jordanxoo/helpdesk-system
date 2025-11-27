@@ -25,13 +25,12 @@ public class TokenService : ITokenService
 
     public string GenerateAccessToken(ApplicationUser user, IList<string> roles)
     {
+        // JWT contains ONLY authentication data - no profile data
+        // Profile data (firstName, lastName, etc.) is managed by UserService
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-            new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
-            new Claim("first name", user.FirstName),
-            new Claim("last name", user.LastName)
+            new Claim(ClaimTypes.Email, user.Email ?? string.Empty)
         };
 
         foreach (var role in roles)

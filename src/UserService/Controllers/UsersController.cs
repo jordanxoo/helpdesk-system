@@ -114,8 +114,9 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Update user-specific data (OrganizationId, IsActive).
-    /// For profile data (firstName, lastName, phoneNumber, role), use AuthService PUT /api/auth/users/{id}.
+    /// Update user data - UserService is the OWNER of all profile and business data.
+    /// Can update: FirstName, LastName, PhoneNumber, Role, OrganizationId, IsActive
+    /// All fields are optional - only provided fields will be updated.
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = UserRoles.Administrator)]
@@ -124,7 +125,7 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserDto>> Update(Guid id, [FromBody] UpdateUserRequest request)
     {
-        _logger.LogInformation("PUT /api/users/{Id} - updating UserService-specific fields only", id);
+        _logger.LogInformation("PUT /api/users/{Id} - updating user data", id);
 
         try
         {

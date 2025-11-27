@@ -73,3 +73,17 @@ public record TicketFilterRequest(
     int Page = 1,
     int PageSize = 10
 );
+
+/// <summary>
+/// Audit log entry for ticket history
+/// </summary>
+public record TicketAuditLogDto(
+    Guid Id,
+    Guid UserId,
+    string Action,
+    string? FieldName,
+    string? OldValue,
+    string? NewValue,
+    string? Description,
+    DateTime CreatedAt
+);

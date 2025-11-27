@@ -13,23 +13,15 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(builder);
         
-        // Konfiguracja ApplicationUser
+        // Konfiguracja ApplicationUser - Authentication context only
         builder.Entity<ApplicationUser>(entity =>
         {
-            entity.Property(e => e.FirstName)
-                .HasMaxLength(100)
-                .IsRequired();
-            
-            entity.Property(e => e.LastName)
-                .HasMaxLength(100)
-                .IsRequired();
-            
             entity.Property(e => e.CreatedAt)
                 .IsRequired();
-            
+
             entity.Property(e => e.RefreshToken)
                 .HasMaxLength(500);
-            
+
             entity.Property(e => e.RefreshTokenExpiryTime);
         });
         

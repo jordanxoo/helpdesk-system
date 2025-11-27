@@ -12,8 +12,8 @@ using TicketService.Data;
 namespace TicketService.Migrations
 {
     [DbContext(typeof(TicketDbContext))]
-    [Migration("20251112195841_AddOrganizationSlaAndEnhancements")]
-    partial class AddOrganizationSlaAndEnhancements
+    [Migration("20251118101101_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

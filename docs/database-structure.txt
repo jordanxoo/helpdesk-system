@@ -10,19 +10,15 @@ System używa 3 oddzielnych baz danych (Database per Service pattern)
 ================================================================================
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TABELA: users - Użytkownicy systemu (ASP.NET Identity)                     │
+│ TABELA: users - Credentials ONLY (ASP.NET Identity)                        │
 ├─────────────────────────────┬──────────────────────┬──────────────────────┤
 │ Kolumna                     │ Typ                  │ Opis                 │
 ├─────────────────────────────┼──────────────────────┼──────────────────────┤
 │ Id                          │ string (PK)          │ GUID użytkownika     │
-│ FirstName                   │ varchar(100)         │ Imię                 │
-│ LastName                    │ varchar(100)         │ Nazwisko             │
-│ Email                       │ varchar(256)         │ Email                │
+│ Email                       │ varchar(256)         │ Email (login)        │
 │ NormalizedEmail             │ varchar(256)         │ Email uppercase      │
 │ EmailConfirmed              │ boolean              │ Email potwierdzony   │
 │ PasswordHash                │ text                 │ Hash hasła           │
-│ PhoneNumber                 │ text                 │ Telefon              │
-│ PhoneNumberConfirmed        │ boolean              │ Telefon potwierdzony │
 │ UserName                    │ varchar(256)         │ Nazwa użytkownika    │
 │ NormalizedUserName          │ varchar(256)         │ Username uppercase   │
 │ SecurityStamp               │ text                 │ Security token       │
@@ -35,6 +31,7 @@ System używa 3 oddzielnych baz danych (Database per Service pattern)
 │ RefreshToken                │ varchar(500)         │ Refresh token        │
 │ RefreshTokenExpiryTime      │ timestamptz          │ Wygaśnięcie tokenu   │
 └─────────────────────────────┴──────────────────────┴──────────────────────┘
+UWAGA: Profil użytkownika (FirstName, LastName, PhoneNumber) jest w UserService!
 Indeksy:
   • EmailIndex (NormalizedEmail)
   • UserNameIndex (NormalizedUserName) UNIQUE
@@ -191,8 +188,7 @@ Eventy publikowane:
   • TicketStatusChanged   - Zmiana statusu zgłoszenia
   • TicketAssigned        - Przypisanie zgłoszenia do agenta
   • CommentAdded          - Dodanie komentarza
-  • UserCreated           - Nowy użytkownik
-  • UserUpdated           - Aktualizacja użytkownika
+  • UserRegistered        - Nowy użytkownik (AuthService → UserService)
 
 
 ================================================================================
@@ -232,5 +228,5 @@ bezpośrednio zmień w bazie danych (tabela user_roles w helpdesk_auth).
 
 
 ================================================================================
-GENEROWANE: 2025-11-12
+ZAKTUALIZOWANE: 2025-11-18 (Clean Separation Architecture)
 ================================================================================

@@ -5,11 +5,25 @@ public record LoginRequest(
     string Password
 );
 
+/// <summary>
+/// Login/Register response - Authentication ONLY
+/// To get user profile, call GET /api/users/me with the token
+/// </summary>
+public record AuthTokenResponse(
+    string Token,
+    string RefreshToken,
+    DateTime ExpiresAt
+);
+
+/// <summary>
+/// DEPRECATED: Use AuthTokenResponse instead
+/// Legacy response that includes user profile (requires HTTP call to UserService)
+/// </summary>
 public record LoginResponse(
     string Token,
     string RefreshToken,
     DateTime ExpiresAt,
-    UserDto User
+    UserDto? User = null
 );
 
 public record RegisterRequest(

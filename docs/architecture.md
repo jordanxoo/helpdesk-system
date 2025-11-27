@@ -83,8 +83,66 @@ ECS Tasks (Containers)
 `RequireHttpsMetadata = false` pozwala na walidację tokenów JWT przez HTTP, 
 ponieważ ruch HTTPS jest już obsłużony przez ALB.
 
-## TODO: Szczegóły do dodania
-- Sequence diagrams dla głównych przepływów
-- Component diagram
-- Deployment diagram dla AWS
-- Database schemas
+## Clean Separation: AuthService vs UserService
+
+### Podział odpowiedzialności
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         REJESTRACJA UŻYTKOWNIKA                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Frontend ──POST /register──▶ AuthService                               │
+│                                    │                                    │
+│                         1. Twórz credentials (email, hasło)             │
+│                         2. Generuj JWT token                            │
+│                         3. Publikuj UserRegisteredEvent ──▶ RabbitMQ    │
+│                                    │                                    │
+│                                    │ (fail-safe: jeśli RabbitMQ error   │
+│                                    │  → rollback user → return 500)     │
+│                                    │                                    │
+│                              RabbitMQ                                   │
+│                                    │                                    │
+│                                    ▼                                    │
+│                              UserService                                │
+│                                    │                                    │
+│                         4. Twórz profil (imię, nazwisko, telefon, rola) │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Co gdzie jest przechowywane?
+
+| Dane | AuthService (helpdesk_auth) | UserService (helpdesk_users) |
+|------|----------------------------|------------------------------|
+| Email | Login (credential) | Dana kontaktowa |
+| Hasło | PasswordHash | - |
+| Refresh Token | Tak | - |
+| Imię, Nazwisko | - | Tak |
+| Telefon | - | Tak |
+| Rola | Identity (authorization) | Biznesowa (assignment) |
+| Organizacja | - | Tak |
+| IsActive | - | Tak |
+
+### Dlaczego Email i Rola są w obu miejscach?
+
+**To świadoma decyzja architektoniczna, nie błąd:**
+
+- **Email w AuthService** = credential do logowania
+- **Email w UserService** = dana kontaktowa (do wysyłki powiadomień)
+
+- **Rola w AuthService** = uprawnienie (czy mogę wejść?)
+- **Rola w UserService** = funkcja biznesowa (czy można mi przypisać ticket?)
+
+### Fail-safe Registration
+
+Rejestracja jest **atomowa** - zapobiega desync między serwisami:
+
+```
+1. AuthService tworzy usera w bazie
+2. AuthService publikuje event do RabbitMQ
+   ├── SUCCESS → zwróć token do frontendu
+   └── FAILURE → usuń usera z bazy → zwróć 500
+```
+
+Dzięki temu nigdy nie wystąpi sytuacja gdzie user istnieje w AuthService ale nie ma go w UserService.

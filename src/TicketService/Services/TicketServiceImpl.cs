@@ -1,9 +1,12 @@
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 using Shared.DTOs;
 using Shared.Models;
 using Shared.Events;
 using Shared.Messaging;
 using Shared.HttpClients;
+using TicketService.Data;
 using TicketService.Repositories;
 
 namespace TicketService.Services;
@@ -11,20 +14,73 @@ namespace TicketService.Services;
 public class TicketServiceImpl : ITicketService
 {
     private readonly ITicketRepository _repository;
+    private readonly TicketDbContext _dbContext;
     private readonly IMessagePublisher _messagePublisher;
     private readonly IUserServiceClient _userServiceClient;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<TicketServiceImpl> _logger;
 
     public TicketServiceImpl(
-        ITicketRepository repository, 
+        ITicketRepository repository,
+        TicketDbContext dbContext,
         IMessagePublisher messagePublisher,
         IUserServiceClient userServiceClient,
+        IHttpContextAccessor httpContextAccessor,
         ILogger<TicketServiceImpl> logger)
     {
         _repository = repository;
+        _dbContext = dbContext;
         _messagePublisher = messagePublisher;
         _userServiceClient = userServiceClient;
+        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Gets the current user ID from JWT token
+    /// </summary>
+    private Guid? GetCurrentUserId()
+    {
+        var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    /// <summary>
+    /// Adds an audit log entry for ticket changes
+    /// </summary>
+    private async Task AddAuditLogAsync(
+        Guid ticketId,
+        AuditAction action,
+        string? fieldName = null,
+        string? oldValue = null,
+        string? newValue = null,
+        string? description = null)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            _logger.LogWarning("Cannot create audit log - no user ID in context");
+            return;
+        }
+
+        var auditLog = new TicketAuditLog
+        {
+            Id = Guid.NewGuid(),
+            TicketId = ticketId,
+            UserId = userId.Value,
+            Action = action,
+            FieldName = fieldName,
+            OldValue = oldValue,
+            NewValue = newValue,
+            Description = description,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.TicketAuditLogs.Add(auditLog);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogDebug("Audit log created: {Action} on ticket {TicketId} by user {UserId}", 
+            action, ticketId, userId.Value);
     }
 
     public async Task<TicketDto?> GetByIdAsync(Guid id)
@@ -197,6 +253,12 @@ public class TicketServiceImpl : ITicketService
         _logger.LogInformation("Ticket created successfully: {TicketId} for Customer: {CustomerId} with Organization: {OrganizationId}", 
             createdTicket.Id, actualCustomerId, organizationId?.ToString() ?? "none");
 
+        // Audit log
+        await AddAuditLogAsync(
+            createdTicket.Id,
+            AuditAction.Created,
+            description: $"Ticket created: {createdTicket.Title}");
+
         await PublishTicketCreatedEventAsync(createdTicket);
 
         return MapToDto(createdTicket);
@@ -212,7 +274,12 @@ public class TicketServiceImpl : ITicketService
             throw new KeyNotFoundException($"Ticket with id {id} not found");
         }
 
+        // Store old values for audit
+        var oldTitle = ticket.Title;
+        var oldDescription = ticket.Description;
         var oldStatus = ticket.Status.ToString();
+        var oldPriority = ticket.Priority.ToString();
+        var oldAgentId = ticket.AssignedAgentId?.ToString();
 
         if (!string.IsNullOrWhiteSpace(request.Title))
         {
@@ -244,9 +311,31 @@ public class TicketServiceImpl : ITicketService
         var updatedTicket = await _repository.UpdateAsync(ticket);
         _logger.LogInformation("Ticket updated successfully: {TicketId}", id);
 
+        // Audit log for each changed field
+        if (oldTitle != updatedTicket.Title)
+        {
+            await AddAuditLogAsync(id, AuditAction.Updated, "Title", oldTitle, updatedTicket.Title);
+        }
+
+        if (oldDescription != updatedTicket.Description)
+        {
+            await AddAuditLogAsync(id, AuditAction.Updated, "Description", "(changed)", "(changed)");
+        }
+
         if (oldStatus != updatedTicket.Status.ToString())
         {
+            await AddAuditLogAsync(id, AuditAction.StatusChanged, "Status", oldStatus, updatedTicket.Status.ToString());
             await PublishTicketStatusChangedEventAsync(updatedTicket, oldStatus);
+        }
+
+        if (oldPriority != updatedTicket.Priority.ToString())
+        {
+            await AddAuditLogAsync(id, AuditAction.PriorityChanged, "Priority", oldPriority, updatedTicket.Priority.ToString());
+        }
+
+        if (oldAgentId != updatedTicket.AssignedAgentId?.ToString())
+        {
+            await AddAuditLogAsync(id, AuditAction.Assigned, "AssignedAgentId", oldAgentId, updatedTicket.AssignedAgentId?.ToString());
         }
 
         return MapToDto(updatedTicket);
@@ -262,11 +351,21 @@ public class TicketServiceImpl : ITicketService
             throw new KeyNotFoundException($"Ticket with id {ticketId} not found.");
         }
 
+        var oldAgentId = ticket.AssignedAgentId?.ToString();
         ticket.AssignedAgentId = agentId;
         ticket.Status = TicketStatus.Open;
 
         var updatedTicket = await _repository.UpdateAsync(ticket);
         _logger.LogInformation("Ticket assigned successfully");
+
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.Assigned,
+            fieldName: "AssignedAgentId",
+            oldValue: oldAgentId,
+            newValue: agentId.ToString(),
+            description: $"Ticket assigned to agent {agentId}");
 
         await PublishTicketAssignedEventAsync(updatedTicket);
 
@@ -293,6 +392,15 @@ public class TicketServiceImpl : ITicketService
 
         var updatedTicket = await _repository.UpdateAsync(ticket);
         _logger.LogInformation("Ticket status changed successfully");
+
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.StatusChanged,
+            fieldName: "Status",
+            oldValue: oldStatus,
+            newValue: status.ToString(),
+            description: $"Status changed from {oldStatus} to {status}");
 
         await PublishTicketStatusChangedEventAsync(updatedTicket, oldStatus);
 
@@ -334,10 +442,44 @@ public class TicketServiceImpl : ITicketService
         await _repository.AddCommentAsync(comment);
         _logger.LogInformation("Comment added successfully");
 
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.CommentAdded,
+            description: request.IsInternal ? "Internal comment added" : "Comment added");
+
         await PublishCommentAddedEventAsync(ticket, comment);
 
         var updatedTicket = await _repository.GetByIdAsync(ticketId, includeComments: true);
         return MapToDto(updatedTicket!);
+    }
+
+    public async Task<List<TicketAuditLogDto>> GetHistoryAsync(Guid ticketId)
+    {
+        _logger.LogInformation("Fetching history for ticket: {TicketId}", ticketId);
+
+        var ticket = await _repository.GetByIdAsync(ticketId, includeComments: false);
+        if (ticket == null)
+        {
+            throw new KeyNotFoundException($"Ticket with id {ticketId} not found");
+        }
+
+        var auditLogs = await _dbContext.TicketAuditLogs
+            .Where(a => a.TicketId == ticketId)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new TicketAuditLogDto(
+                a.Id,
+                a.UserId,
+                a.Action.ToString(),
+                a.FieldName,
+                a.OldValue,
+                a.NewValue,
+                a.Description,
+                a.CreatedAt
+            ))
+            .ToListAsync();
+
+        return auditLogs;
     }
 
     // Private helper methods

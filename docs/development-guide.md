@@ -33,7 +33,7 @@ Projekt jest szkieletem gotowym do rozwoju. Wszystkie miejsca wymagające implem
 ### 2. AuthService (Uwierzytelnianie)
 
 #### Data Layer
-- `ApplicationUser.cs` - Rozszerzenie IdentityUser
+- `ApplicationUser.cs` - Rozszerzenie IdentityUser (TYLKO credentials - email, password)
 - `AuthDbContext.cs` - Konfiguracja DbContext z Identity
 
 #### Services
