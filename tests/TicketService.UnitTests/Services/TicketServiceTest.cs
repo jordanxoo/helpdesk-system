@@ -1,6 +1,7 @@
 using System.Dynamic;
 using Bogus;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
 using NSubstitute;
@@ -9,6 +10,7 @@ using Shared.DTOs;
 using Shared.HttpClients;
 using Shared.Messaging;
 using Shared.Models;
+using TicketService.Data;
 using TicketService.Repositories;
 using TicketService.Services;
 
@@ -21,9 +23,11 @@ public class TicketServiceTests
 {
     
     private readonly ITicketRepository _ticketRepoMock = Substitute.For<ITicketRepository>();
+    private readonly TicketDbContext _dbContextMock = Substitute.For<TicketDbContext>();
     private readonly IMessagePublisher _messagePublisherMock = Substitute.For<IMessagePublisher>();
     private readonly IMessageConsumer _messageConsumerMock = Substitute.For<IMessageConsumer>();
     private readonly IUserServiceClient _userClientMock = Substitute.For<IUserServiceClient>();
+    private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
     private readonly ILogger<TicketServiceImpl> _loggerMock = Substitute.For<ILogger<TicketServiceImpl>>();
 
     // sut - system under test
@@ -33,8 +37,8 @@ public class TicketServiceTests
 
     public TicketServiceTests()
     {
-        _sut  = new TicketServiceImpl(_ticketRepoMock,
-        _messagePublisherMock,_userClientMock,_loggerMock);
+        _sut  = new TicketServiceImpl(_ticketRepoMock, _dbContextMock,
+        _messagePublisherMock,_userClientMock, _httpContextAccessor, _loggerMock);
     }
 
     [Fact]

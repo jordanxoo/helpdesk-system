@@ -1,7 +1,9 @@
 using Amazon.Runtime.Internal.Util;
+using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Shared.HttpClients;
 using Shared.Messaging;
+using TicketService.Data;
 using TicketService.Repositories;
 using TicketService.Services;
 using Microsoft.Extensions.Logging;
@@ -17,14 +19,15 @@ public class TicketStatusTests
     private readonly TicketServiceImpl _sut;
     
     private readonly ITicketRepository _repositoryMock = Substitute.For<ITicketRepository>();
+    private readonly TicketDbContext _dbContextMock = Substitute.For<TicketDbContext>();
     private readonly IMessagePublisher _publisherMock = Substitute.For<IMessagePublisher>();
-
     private readonly IUserServiceClient _userServiceMock = Substitute.For<IUserServiceClient>();
+    private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
     private readonly ILogger<TicketServiceImpl> _loggerMock = Substitute.For<ILogger<TicketServiceImpl>>();
 
     public TicketStatusTests()
     {
-        _sut = new TicketServiceImpl(_repositoryMock,_publisherMock,_userServiceMock,_loggerMock);
+        _sut = new TicketServiceImpl(_repositoryMock, _dbContextMock, _publisherMock, _userServiceMock, _httpContextAccessor, _loggerMock);
     }
 
     [Fact]

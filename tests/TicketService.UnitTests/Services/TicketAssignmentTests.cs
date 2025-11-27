@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shared.Constants;
@@ -6,6 +7,7 @@ using Shared.Events;
 using Shared.HttpClients;
 using Shared.Messaging;
 using Shared.Models;
+using TicketService.Data;
 using TicketService.Repositories;
 using TicketService.Services;
 using Xunit;
@@ -16,13 +18,15 @@ public class TicketAssignmentTests
 {
     private readonly TicketServiceImpl _sut; 
     private readonly ITicketRepository _repoMock = Substitute.For<ITicketRepository>();
+    private readonly TicketDbContext _dbContextMock = Substitute.For<TicketDbContext>();
     private readonly IMessagePublisher _publisherMock = Substitute.For<IMessagePublisher>();
     private readonly IUserServiceClient _userClientMock = Substitute.For<IUserServiceClient>();
+    private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
     private readonly ILogger<TicketServiceImpl> _loggerMock = Substitute.For<ILogger<TicketServiceImpl>>();
 
     public TicketAssignmentTests()
     {
-        _sut = new TicketServiceImpl(_repoMock, _publisherMock, _userClientMock, _loggerMock);
+        _sut = new TicketServiceImpl(_repoMock, _dbContextMock, _publisherMock, _userClientMock, _httpContextAccessor, _loggerMock);
     }
 
     [Fact]
