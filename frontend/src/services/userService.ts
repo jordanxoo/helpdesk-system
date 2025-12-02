@@ -1,5 +1,5 @@
 import api from "./api";
-import type {User, CreateUserRequest, UpdateUserRequest} from '../types/user.types';
+import type {User, CreateUserRequest, UpdateUserRequest, UpdateProfileRequest} from '../types/user.types';
 
 
 export const userService = {
@@ -25,7 +25,13 @@ export const userService = {
          await api.delete(`/api/users/${id}`);
     },
     async getProfile(): Promise<User>{
-        const response = await api.get<User>(`/api/users/profile`);
+        const response = await api.get<User>(`/api/users/me`);
+        return response.data;
+    },
+
+    async updateProfile(userId: string, data: UpdateProfileRequest): Promise<User>
+    {
+        const response = await api.put<User>(`/api/users/${userId}`,data);
         return response.data;
     }
 }

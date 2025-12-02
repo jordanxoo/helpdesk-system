@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ticketService } from '../services/ticketService';
-import { mockTickets } from '../data/mockData';
+//import { mockTickets } from '../data/mockData';
 import type { TicketDetails, TicketComment } from '../types/ticket.types';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -31,17 +31,9 @@ export default function TicketDetailsPage() {
         if (!id) return;
         try {
             setLoading(true);
-            const mockTicket = mockTickets.find(t => t.id === id);
-            if (mockTicket) {
-                setTicket({
-                    ...mockTicket,
-                    customerEmail: 'mock@example.com',
-                    comments: [] 
-                } as TicketDetails);
-            }
-            // TODO: Replace with real API call when backend has data
-            // const data = await ticketService.getTicketById(id);
-            // setTicket(data);
+            
+            const data = await ticketService.getTicketById(id);
+            setTicket(data);
         } catch (error) {
             console.error('Failed to load ticket:', error);
         } finally {
@@ -56,7 +48,7 @@ export default function TicketDetailsPage() {
             setSubmittingComment(true);
             await ticketService.addComment(id, newComment);
             setNewComment('');
-            await loadTicket(); 
+            await loadTicket();  //odsiwezanie zeby zobaczyc nowy ticket
         } catch (error) {
             console.error('Failed to add comment:', error);
         } finally {

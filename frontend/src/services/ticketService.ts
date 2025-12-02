@@ -3,7 +3,7 @@ import type { Ticket, CreateTicketRequest, TicketComment, TicketDetails } from '
 
 export const ticketService = {
     async getMyTickets(): Promise<Ticket[]> {
-        const response = await api.get<Ticket[]>('/api/tickets/my');
+        const response = await api.get<Ticket[]>('/api/tickets/my-tickets');
         return response.data;
     },
 
@@ -23,7 +23,7 @@ export const ticketService = {
     },
 
     async updateTicketStatus(id: string, status: string): Promise<Ticket> {
-        const response = await api.patch<Ticket>(`/api/tickets/${id}/status`, { status });
+        const response = await api.patch<Ticket>(`/api/tickets/${id}/status`, {newStatus: status });
         return response.data;
     },
 

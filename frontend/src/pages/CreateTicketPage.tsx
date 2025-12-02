@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ticketService } from "@/services/ticketService";
 
 export default function CreateTicketPage()
 {
@@ -17,7 +18,7 @@ export default function CreateTicketPage()
         title: '',
         description: '',
         priority: 'Medium',
-        category: 'Techniczny',
+        category: 'Hardware',
     });
 
     const [errors, setErrors] = useState<Record<string,string>>({});
@@ -49,11 +50,12 @@ export default function CreateTicketPage()
         {
             setIsSubmitting(true);
 
-            //TODO ZMIANA NA API CALL
-            //await ticketService.createTicket(formData);
-
-            //symulacja API
-            await new Promise(resolve => setTimeout(resolve,1000));
+           await ticketService.createTicket({
+            title: formData.title,
+            description: formData.description,
+            priority: formData.priority,
+            category: formData.category
+           } as any);
 
             console.log('Ticket created: ', formData);
 
@@ -62,7 +64,7 @@ export default function CreateTicketPage()
         catch(error)
         {
             console.error('Failed to create ticket: ',error);
-            alert('Nie udało się utworzyć zgłoszenia. Sprobuj ponownie.');
+            // alert('Nie udało się utworzyć zgłoszenia. Sprobuj ponownie.');
         }finally
         {
             setIsSubmitting(false);
@@ -212,14 +214,16 @@ export default function CreateTicketPage()
                   <SelectTrigger>
                     <SelectValue placeholder="Wybierz kategorię" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Techniczny">Techniczny</SelectItem>
-                    <SelectItem value="Pytanie">Pytanie</SelectItem>
-                    <SelectItem value="Błąd">Błąd</SelectItem>
-                    <SelectItem value="Prośba o funkcję">Prośba o funkcję</SelectItem>
-                    <SelectItem value="Inny">Inny</SelectItem>
-                  </SelectContent>
-                </Select>
+                 <SelectContent>
+               
+                <SelectItem value="Hardware">Sprzęt (Hardware)</SelectItem>
+                <SelectItem value="Software">Oprogramowanie (Software)</SelectItem>
+                <SelectItem value="Network">Sieć (Network)</SelectItem>
+                <SelectItem value="Security">Bezpieczeństwo</SelectItem>
+                <SelectItem value="Account">Problemy z kontem</SelectItem>
+                <SelectItem value="Other">Inne</SelectItem>
+              </SelectContent>
+                              </Select>
               </div>
 
               {/* Buttons */}

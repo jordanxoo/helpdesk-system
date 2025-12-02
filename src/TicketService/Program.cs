@@ -45,11 +45,32 @@ builder.Services.AddScoped<ITicketService, TicketServiceImpl>();
 var userServiceUrl = builder.Configuration["Services:UserService:Url"] 
     ?? throw new InvalidOperationException("UserService URL not configured");
 
-builder.Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>
+// builder.Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>
+// {
+//     client.BaseAddress = new Uri(userServiceUrl);
+//     client.Timeout = TimeSpan.FromSeconds(10);
+//     client.DefaultRequestHeaders.Add("User-Agent", "TicketService/1.0");
+// });
+
+builder.Services.AddHttpClient<IUserServiceClient,UserServiceClient>(client =>
 {
     client.BaseAddress = new Uri(userServiceUrl);
-    client.Timeout = TimeSpan.FromSeconds(10);
-    client.DefaultRequestHeaders.Add("User-Agent", "TicketService/1.0");
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent","TicketService/1.0");
+})
+.AddStandardResilienceHandler( options =>
+{
+    options.Retry.MaxRetryAttempts = 3;
+    options.Retry.Delay = TimeSpan.FromSeconds(2);
+    options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
+
+
+    options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(10);
+    options.CircuitBreaker.FailureRatio = 0.5;
+    options.CircuitBreaker.MinimumThroughput = 5;
+    options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(30);
+
+    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(5);
 });
 
 builder.Services.Configure<MessagingSettings>(
@@ -221,3 +242,6 @@ public class MockMessagePublisher : IMessagePublisher
         return Task.CompletedTask;
     }
 }
+
+public partial class Program { }
+

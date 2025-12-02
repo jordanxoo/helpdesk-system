@@ -9,6 +9,7 @@ import {Badge} from '@/components/ui/badge';
 import {User, Save, ArrowLeft,Mail,Phone, Calendar, Shield} from 'lucide-react';
 import type { User as UserType} from '@/types/user.types';
 import Layout from '@/components/ui/Layout';
+import { userService } from '@/services/userService';
 
 export default function ProfilePage(){
 
@@ -29,18 +30,20 @@ export default function ProfilePage(){
         loadProfile();
     }, []);
 
-    const loadProfile = () => {
-        //TODO: zmiana na prawdziwe api
+    const loadProfile = async () => {
 
-        const userData = localStorage.getItem('user');
-        if(userData){
-            const parsedUser = JSON.parse(userData);
-            setUser(parsedUser);
+        try{
+            const data = await userService.getProfile();
+
+            setUser(data);
             setFormData({
-                firstName: parsedUser.firstName || '',
-                lastName: parsedUser.lastName || '',
-                phoneNumber: parsedUser.phoneNumber || ''
+                firstName: data.firstName,
+                lastName: data.lastName,
+                phoneNumber: data.phoneNumber || ''
             });
+        }catch(err)
+        {
+            console.error("Nie udało się pobrać profilu użytkownika: ",err);
         }
     };
 
@@ -67,28 +70,32 @@ export default function ProfilePage(){
             return;
         }
 
+        if(!user || !user.id)
+        {
+            console.error("Brak ID użytkownika");
+            return;
+        }
+
         try{
             setSaving(true);
             setSuccessMessage('');
 
-            //TODO zamiana na prawdziwe api
-            //await userService.updateProfile(formData);
-            console.log('Updating profile: ',formData);
+            const updatedUserFromApi = await userService.updateProfile(user.id,{
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                phoneNumber: formData.phoneNumber
+            });
 
-            await new Promise(resolve => setTimeout(resolve,1000));
+            const mergeUser = {
+                ...user,
+                ...updatedUserFromApi
+            };
 
-            if(user)
-            {
-                const updatedUser = {
-                    ...user,
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    phoneNumber: formData.phoneNumber,
-                };
-                localStorage.setItem('user', JSON.stringify(updatedUser));
-                setUser(updatedUser);
-            }
-            setSuccessMessage('Profil został zaktualizowany!');
+            localStorage.setItem('user',JSON.stringify(mergeUser));
+            setUser(mergeUser);
+
+            setSuccessMessage("Profil został zaktualizowany!");
+            
         }catch(error)
         {
             console.error('Failed to update user: ',error);

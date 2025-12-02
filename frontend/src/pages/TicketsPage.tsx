@@ -1,168 +1,93 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockTickets } from '@/data/mockData';
-import { Link, useNavigate } from 'react-router-dom';
+import {useNavigate } from 'react-router-dom';
 import Layout from '@/components/ui/Layout';
+import { ticketService } from '@/services/ticketService';
+import type { Ticket } from '@/types/ticket.types';
 
 export default function TicketsPage() {
   const navigate = useNavigate();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
-  const filteredTickets = mockTickets.filter(ticket => {
-    const matchesSearch = ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         ticket.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  useEffect(() => {
+    loadTickets();
+  }, []);
+
+  const loadTickets = async () => {
+    try {
+      setLoading(true);
+      let response: any;
+
+      if (user.role === 'Customer') {
+        response = await ticketService.getMyTickets();
+      } else {
+        response = await ticketService.getAllTickets();
+      }
+
+      // Obsługa różnych formatów odpowiedzi z API
+      // Backend zwraca: { tickets: [...], totalCount: ... }
+      const data = response.tickets || response.items || response;
+
+      if (Array.isArray(data)) {
+        setTickets(data);
+      } else {
+        console.error("API response is not an array:", response);
+        setTickets([]);
+      }
+    } catch (error) {
+      console.error("Failed to load tickets:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredTickets = tickets.filter(ticket => 
+    ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ticket.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'Open':
-        return 'default';
-      case 'InProgress':
-        return 'secondary';
-      case 'Resolved':
-        return 'outline';
-      default:
-        return 'default';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Critical':
-        return 'text-red-600 bg-red-50 border-red-200';
-      case 'High':
-        return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'Medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'Low':
-        return 'text-green-600 bg-green-50 border-green-200';
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'Open':
-        return 'Otwarte';
-      case 'InProgress':
-        return 'W trakcie';
-      case 'Resolved':
-        return 'Rozwiązane';
-      default:
-        return status;
-    }
-  };
-
-  const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case 'Critical':
-        return 'Krytyczny';
-      case 'High':
-        return 'Wysoki';
-      case 'Medium':
-        return 'Średni';
-      case 'Low':
-        return 'Niski';
-      default:
-        return priority;
-    }
+    return status === 'Open' ? 'default' : status === 'Resolved' ? 'outline' : 'secondary';
   };
 
   return (
     <Layout currentPage="/tickets">
       <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Wszystkie zgłoszenia</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Zgłoszenia</h1>
             <p className="text-gray-600 mt-1">
               Znaleziono {filteredTickets.length} zgłoszeń
             </p>
           </div>
-          <Button>
-            <Link to="/tickets/create">+ Nowe zgłoszenie</Link>
+          <Button onClick={() => navigate('/tickets/create')}>
+            + Nowe zgłoszenie
           </Button>
         </div>
 
         <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Filtry</CardTitle>
-            <CardDescription>Wyszukaj i filtruj zgłoszenia</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Wyszukaj
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Szukaj po tytule lub opisie..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wszystkie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Wszystkie</SelectItem>
-                    <SelectItem value="Open">Otwarte</SelectItem>
-                    <SelectItem value="InProgress">W trakcie</SelectItem>
-                    <SelectItem value="Resolved">Rozwiązane</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Priorytet
-                </label>
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wszystkie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Wszystkie</SelectItem>
-                    <SelectItem value="Critical">Krytyczny</SelectItem>
-                    <SelectItem value="High">Wysoki</SelectItem>
-                    <SelectItem value="Medium">Średni</SelectItem>
-                    <SelectItem value="Low">Niski</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          <CardContent className="pt-6">
+            <Input
+              type="text"
+              placeholder="Szukaj po tytule lub opisie..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </CardContent>
         </Card>
 
-        {filteredTickets.length === 0 ? (
+        {loading ? (
+           <div className="text-center py-12">Ładowanie zgłoszeń...</div>
+        ) : filteredTickets.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
-              <p className="text-gray-500 text-lg mb-4">
-                Nie znaleziono zgłoszeń pasujących do kryteriów
-              </p>
-              <Button variant="outline" onClick={() => {
-                setSearchQuery('');
-                setStatusFilter('all');
-                setPriorityFilter('all');
-              }}>
-                Wyczyść filtry
-              </Button>
+              <p className="text-gray-500 text-lg mb-4">Brak zgłoszeń</p>
             </CardContent>
           </Card>
         ) : (
@@ -178,12 +103,8 @@ export default function TicketsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <CardTitle className="text-lg">{ticket.title}</CardTitle>
-                        <Badge variant={getStatusVariant(ticket.status)}>
-                          {getStatusLabel(ticket.status)}
-                        </Badge>
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-md border ${getPriorityColor(ticket.priority)}`}>
-                          {getPriorityLabel(ticket.priority)}
-                        </span>
+                        <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
+                        <Badge variant="outline">{ticket.priority}</Badge>
                       </div>
                       <CardDescription className="line-clamp-2">
                         {ticket.description}
@@ -193,41 +114,7 @@ export default function TicketsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-between items-center text-sm text-gray-600">
-                    <div className="flex items-center gap-4">
-                      <div>
-                        {ticket.agentName ? (
-                          <span>
-                            Przypisany do:{' '}
-                            <span className="font-semibold text-gray-900">
-                              {ticket.agentName}
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">Nieprzypisany</span>
-                        )}
-                      </div>
-                      {ticket.category && (
-                        <span className="text-xs bg-gray-100 px-2 py-1 rounded-md">
-                          {ticket.category}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div>
-                        Utworzono:{' '}
-                        {new Date(ticket.createdAt).toLocaleDateString('pl-PL', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </div>
-                      {ticket.updatedAt && (
-                        <div className="text-xs text-gray-500">
-                          Zaktualizowano:{' '}
-                          {new Date(ticket.updatedAt).toLocaleDateString('pl-PL')}
-                        </div>
-                      )}
-                    </div>
+                     <span>Utworzono: {new Date(ticket.createdAt).toLocaleDateString()}</span>
                   </div>
                 </CardContent>
               </Card>
