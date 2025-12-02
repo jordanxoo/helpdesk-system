@@ -358,8 +358,7 @@ public class TicketServiceImpl : ITicketService
             AuditAction.Assigned,
             fieldName: "AssignedAgentId",
             oldValue: oldAgentId,
-            newValue: agentId.ToString(),
-            description: $"Ticket assigned to agent {agentId}");
+            newValue: agentId.ToString());
 
         await PublishTicketAssignedEventAsync(updatedTicket);
 
@@ -393,8 +392,7 @@ public class TicketServiceImpl : ITicketService
             AuditAction.StatusChanged,
             fieldName: "Status",
             oldValue: oldStatus,
-            newValue: status.ToString(),
-            description: $"Status changed from {oldStatus} to {status}");
+            newValue: status.ToString());
 
         await PublishTicketStatusChangedEventAsync(updatedTicket, oldStatus);
 
