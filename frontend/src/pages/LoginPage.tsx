@@ -5,6 +5,7 @@ import { Label } from "@radix-ui/react-label";
 import {Card, CardContent, CardDescription,CardHeader, CardTitle} from '@/components/ui/card';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '@/services/authService';
+import { userService } from '@/services/userService';
 import { AlertCircle } from 'lucide-react';
 
 export default function LoginPage()
@@ -24,9 +25,12 @@ export default function LoginPage()
             const response = await authService.login({ email, password });
             
             localStorage.setItem('token', response.token);
-            localStorage.setItem('user', JSON.stringify(response.user));
             
-            if(response.user.role === "Administrator")
+            // Fetch user profile from UserService
+            const user = await userService.getProfile();
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            if(user.role === "Administrator")
             {
                 navigate('/admin');
             }else

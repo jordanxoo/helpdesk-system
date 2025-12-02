@@ -33,7 +33,17 @@ export interface LoginResponse
     token: string;
     refreshToken: string;
     expiresAt: string;
-    user: User;
+    // Note: user is NOT returned by auth endpoints
+    // Use userService.getProfile() to fetch user data after login/register
+}
+
+export interface PasswordRequirements {
+    minimumLength: number;
+    requireDigit: boolean;
+    requireLowercase: boolean;
+    requireUppercase: boolean;
+    requireNonAlphanumeric: boolean;
+    description: string;
 }
 
 export interface AuthState

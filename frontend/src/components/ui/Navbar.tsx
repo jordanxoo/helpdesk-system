@@ -12,8 +12,20 @@ export default function Navbar( {currentPage}: NavbarProps)
     const navigate = useNavigate();
     const [mobileMenuOpen,setMobileMenuOpen] = useState(false);
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const isAdmin = user.role === 'Administrator';
+    const getUserFromStorage = () => {
+        try {
+            const userStr = localStorage.getItem('user');
+            if (!userStr || userStr === 'undefined') {
+                return null;
+            }
+            return JSON.parse(userStr);
+        } catch {
+            return null;
+        }
+    };
+
+    const user = getUserFromStorage();
+    const isAdmin = user?.role === 'Administrator';
 
     const handleLogout = () => {
         localStorage.removeItem('token');

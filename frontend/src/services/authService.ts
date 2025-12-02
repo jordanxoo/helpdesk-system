@@ -1,6 +1,6 @@
 import api from './api';
 
-import type { LoginRequest, RegisterRequest, LoginResponse } from '../types/auth.types';
+import type { LoginRequest, RegisterRequest, LoginResponse, PasswordRequirements } from '../types/auth.types';
 
 export const authService = {
     async login(credentials: LoginRequest): Promise<LoginResponse> {
@@ -25,5 +25,10 @@ export const authService = {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
         }
+    },
+
+    async getPasswordRequirements(): Promise<PasswordRequirements> {
+        const response = await api.get<PasswordRequirements>('/api/auth/password-requirements');
+        return response.data;
     },
 };
