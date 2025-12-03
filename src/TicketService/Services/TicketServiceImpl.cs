@@ -170,15 +170,9 @@ public class TicketServiceImpl : ITicketService
     {
         _logger.LogInformation("Creating new ticket - User: {UserId}, Role: {Role}", userId, userRole);
 
-        if (!Enum.TryParse<TicketPriority>(request.Priority,true, out var priority))
-        {
-            throw new ArgumentException($"Invalid priority: {request.Priority}");
-        }
 
-        if (!Enum.TryParse<TicketCategory>(request.Category,true, out var category))
-        {
-            throw new ArgumentException($"Invalid category: {request.Category}");
-        }
+        var priority = Enum.Parse<TicketPriority>(request.Priority,true);
+        var category = Enum.Parse<TicketCategory>(request.Category,true);
 
         // Determine the actual customer ID based on role
         Guid actualCustomerId;

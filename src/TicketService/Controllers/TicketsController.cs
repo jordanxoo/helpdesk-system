@@ -30,12 +30,6 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<TicketDto>> GetById(Guid id)
     {
         var ticket = await _ticketService.GetByIdAsync(id);
-        
-        if (ticket == null)
-        {
-            return NotFound(new { message = $"Ticket {id} not found" });
-        }
-
         return Ok(ticket);
     }
 
@@ -82,6 +76,7 @@ public class TicketsController : ControllerBase
             return Unauthorized(new { message = "Invalid user ID" });
         }
 
+
         var result = await _ticketService.GetMyTicketsAsync(userId, page, pageSize);
         return Ok(result);
     }
@@ -126,17 +121,12 @@ public class TicketsController : ControllerBase
             return Unauthorized(new { message = "Invalid user ID" });
         }
 
-        try
-        {
             // Customer creates ticket for themselves
             // Agent/Admin can create ticket for a customer (requires CustomerId in request)
             var ticket = await _ticketService.CreateAsync(userId, userRole, request);
             return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        
+        
     }
 
     /// <summary>
@@ -148,19 +138,9 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TicketDto>> Update(Guid id, [FromBody] UpdateTicketRequest request)
     {
-        try
-        {
+        
             var ticket = await _ticketService.UpdateAsync(id, request);
             return Ok(ticket);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
     }
 
     /// <summary>
@@ -172,15 +152,9 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TicketDto>> AssignToAgent(Guid id, Guid agentId)
     {
-        try
-        {
             var ticket = await _ticketService.AssignToAgentAsync(id, agentId);
             return Ok(ticket);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+      
     }
 
     /// <summary>
@@ -195,19 +169,8 @@ public class TicketsController : ControllerBase
         Guid id, 
         [FromBody] ChangeStatusRequest request)
     {
-        try
-        {
-            var ticket = await _ticketService.ChangeStatusAsync(id, request.NewStatus);
+          var ticket = await _ticketService.ChangeStatusAsync(id, request.NewStatus);
             return Ok(ticket);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
     }
 
     /// <summary>
@@ -219,15 +182,9 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        try
-        {
             await _ticketService.DeleteAsync(id);
             return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        
     }
 
     /// <summary>
@@ -267,14 +224,7 @@ public class TicketsController : ControllerBase
     {
         _logger.LogInformation("GET /api/tickets/{Id}/history", id);
 
-        try
-        {
             var history = await _ticketService.GetHistoryAsync(id);
             return Ok(history);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
     }
 }

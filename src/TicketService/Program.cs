@@ -12,8 +12,26 @@ using TicketService.Services;
 using Shared.Messaging;
 using Shared.Configuration;
 using Shared.HttpClients;
+using FluentValidation.AspNetCore;
+using FluentValidation;
+using TicketService.Validators;
+using TicketService.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+
+// rejestracja fluent validation
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateTicketRequestValidator>();
+
+
+//rejestracja exception handlera
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails(); // standardowy format bledow
+
+
 
 // Konfiguracja PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -165,6 +183,10 @@ builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString!);
 
 var app = builder.Build();
+
+// uzycie xeception handlera
+app.UseExceptionHandler();
+
 
 // Database Migration
 if (app.Environment.IsDevelopment())
