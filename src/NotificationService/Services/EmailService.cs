@@ -25,38 +25,36 @@ public class EmailService : IEmailService
     {
         try
         {
-            _logger.LogInformation("Sending email to {To}, Subject: {Subject}", to, subject);
+            _logger.LogInformation("Sending email to {To} via {Host}:{Port}",to,_settings.SmtpServer,_settings.SmtpPort);
+            
+            using var client = new SmtpClient(_settings.SmtpServer,_settings.SmtpPort);
 
-            // For development - just log instead of actually sending
-            if (string.IsNullOrEmpty(_settings.SmtpPassword))
+            if(!string.IsNullOrEmpty(_settings.SmtpPassword))
             {
-                _logger.LogWarning("SMTP not configured. Email would be sent to {To}: {Subject}", to, subject);
-                _logger.LogDebug("Email body: {Body}", body);
-                return;
+                client.Credentials = new NetworkCredential(_settings.SenderEmail,_settings.SmtpPassword);
+                client.EnableSsl = true;
+            }
+            else
+            {
+                // dla malpit/localhost bez ssl
+                client.EnableSsl = false;
             }
 
-            using var client = new SmtpClient(_settings.SmtpServer, _settings.SmtpPort)
+            var MailMessage = new MailMessage
             {
-                Credentials = new NetworkCredential(_settings.SenderEmail, _settings.SmtpPassword),
-                EnableSsl = true
-            };
-
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(_settings.SenderEmail, _settings.SenderName),
+                From = new MailAddress(_settings.SenderEmail,_settings.SenderName),
                 Subject = subject,
                 Body = body,
                 IsBodyHtml = isHtml
             };
-            mailMessage.To.Add(to);
+            MailMessage.To.Add(to);
 
-            await client.SendMailAsync(mailMessage);
-            _logger.LogInformation("Email sent successfully to {To}", to);
-        }
-        catch (Exception ex)
+            await client.SendMailAsync(MailMessage);
+            _logger.LogInformation("Email sent successfully to {To}",to);
+
+        }catch(Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {To}", to);
-            throw;
+            _logger.LogError(ex,"Failed to send email to: {To}", to);
         }
     }
 

@@ -21,6 +21,19 @@ services:
       timeout: 5s
       retries: 5
 
+
+  # MAILPIT - FAKE SMTP SERVER
+  mailpit:
+    image: axllent/mailpit
+    container_name: helpdesk-mailpit
+    restart: always
+    ports:
+      - "8025:8025" #UI przegladarka do testow
+      - "1025:1025" #port SMTP dla aplikacji
+
+    networks:
+      - helpdesk-network
+
   # RabbitMQ Message Broker
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -53,6 +66,7 @@ services:
       JwtSettings__Audience: ${JWT_AUDIENCE}
       JwtSettings__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
       JwtSettings__RefreshTokenExpirationDays: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS}
+      MessagingSettings__ExchangeName: helpdesk-events
     ports:
       - "${AUTH_SERVICE_PORT}:8080"
     restart: on-failure
@@ -99,6 +113,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: ${USER_DB_CONNECTION}
       MessagingSettings__HostName: ${RABBITMQ_HOST}
+      MessagingSettings__UserName: ${RABBITMQ_USER}
+      MessagingSettings__Password: ${RABBITMQ_PASSWORD}
+      MessagingSettings__ExchangeName: helpdesk-events
       JwtSettings__SecretKey: ${JWT_SECRET}
       JwtSettings__Issuer: ${JWT_ISSUER}
       JwtSettings__Audience: ${JWT_AUDIENCE}
@@ -121,21 +138,23 @@ services:
     container_name: helpdesk-notifications
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      MessagingSettings__HostName: ${RABBITMQ_HOST}
+      MessagingSettings__HostName: helpdesk-rabbitmq
       MessagingSettings__UserName: ${RABBITMQ_USER}
       MessagingSettings__Password: ${RABBITMQ_PASSWORD}
-      MessagingSettings__ExchangeName: ${RABBITMQ_EXCHANGE}
-      EmailSettings__SmtpServer: ${SMTP_SERVER}
-      EmailSettings__SmtpPort: ${SMTP_PORT}
-      EmailSettings__SenderEmail: ${SMTP_SENDER_EMAIL}
-      EmailSettings__SenderName: ${SMTP_SENDER_NAME}
-      EmailSettings__SmtpPassword: ${SMTP_PASSWORD}
+      MessagingSettings__ExchangeName: helpdesk-events
+      EmailSettings__SmtpServer: mailpit
+      EmailSettings__SmtpPort: 1025
+      EmailSettings__SenderEmail: noreply@helpdesk.com
+      EmailSettings__SenderName: "Helpdesk System"
+      EmailSettings__SmtpPassword: ""
     ports:
       - "${NOTIFICATION_SERVICE_PORT}:8080"
     restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     networks:
       - helpdesk-network
 
@@ -165,3 +184,4 @@ volumes:
 networks:
   helpdesk-network:
     driver: bridge
+

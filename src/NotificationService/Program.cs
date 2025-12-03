@@ -24,9 +24,18 @@ builder.Services.AddSingleton<ISmsService, SmsService>();
 
 // Register RabbitMQ Consumer
 builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
+builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+
+//Register Email services
+builder.Services.AddScoped<IEmailService,EmailService>();
+
+//Register background servcie for consuming email events
 
 // Register Background Worker
 builder.Services.AddHostedService<NotificationWorker>();
+
+
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
