@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -91,8 +92,24 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
-// RabbitMQ Publisher
-builder.Services.AddSingleton<Shared.Messaging.IMessagePublisher, Shared.Messaging.RabbitMqPublisher>();
+// MassTransit Configuration
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        var messagingSettings = builder.Configuration
+            .GetSection("MessagingSettings").Get<MessagingSettings>();
+        
+        if (messagingSettings != null)
+        {
+            cfg.Host(messagingSettings.HostName, "/", h =>
+            {
+                h.Username(messagingSettings.UserName);
+                h.Password(messagingSettings.Password);
+            });
+        }
+    });
+});
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 

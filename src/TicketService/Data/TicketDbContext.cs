@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Shared.Models;
-
+using MassTransit;
 namespace TicketService.Data;
 
 public class TicketDbContext : DbContext
@@ -20,6 +20,10 @@ public class TicketDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
 
         // Konfiguracja tabeli Tickets
         modelBuilder.Entity<Ticket>(entity =>

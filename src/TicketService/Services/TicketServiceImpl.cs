@@ -4,10 +4,11 @@ using Shared.Constants;
 using Shared.DTOs;
 using Shared.Models;
 using Shared.Events;
-using Shared.Messaging;
+//using Shared.Messaging;
 using Shared.HttpClients;
 using TicketService.Data;
 using TicketService.Repositories;
+using MassTransit;
 
 namespace TicketService.Services;
 
@@ -15,7 +16,9 @@ public class TicketServiceImpl : ITicketService
 {
     private readonly ITicketRepository _repository;
     private readonly TicketDbContext _dbContext;
-    private readonly IMessagePublisher _messagePublisher;
+    //private readonly IMessagePublisher _messagePublisher;
+
+    private readonly IPublishEndpoint _publishEndpoint;    
     private readonly IUserServiceClient _userServiceClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<TicketServiceImpl> _logger;
@@ -23,14 +26,14 @@ public class TicketServiceImpl : ITicketService
     public TicketServiceImpl(
         ITicketRepository repository,
         TicketDbContext dbContext,
-        IMessagePublisher messagePublisher,
+        IPublishEndpoint publishEndpoint,
         IUserServiceClient userServiceClient,
         IHttpContextAccessor httpContextAccessor,
         ILogger<TicketServiceImpl> logger)
     {
         _repository = repository;
         _dbContext = dbContext;
-        _messagePublisher = messagePublisher;
+        _publishEndpoint = publishEndpoint;
         _userServiceClient = userServiceClient;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
@@ -77,7 +80,6 @@ public class TicketServiceImpl : ITicketService
         };
 
         _dbContext.TicketAuditLogs.Add(auditLog);
-        await _dbContext.SaveChangesAsync();
 
         _logger.LogDebug("Audit log created: {Action} on ticket {TicketId} by user {UserId}", 
             action, ticketId, userId.Value);
@@ -231,31 +233,46 @@ public class TicketServiceImpl : ITicketService
             }
            
         }
-
-        var ticket = new Ticket
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            CustomerId = actualCustomerId,
-            Title = request.Title,
-            Description = request.Description,
-            Priority = priority,
-            Category = category,
-            Status = TicketStatus.New,
-            OrganizationId = organizationId
-        };
+            var ticket = new Ticket
+            {
+                CustomerId = actualCustomerId,
+                Title = request.Title,
+                Description = request.Description,
+                Priority = priority,
+                Category = category,
+                Status = TicketStatus.New,
+                OrganizationId = organizationId
+            };
 
-        var createdTicket = await _repository.CreateAsync(ticket);
-        _logger.LogInformation("Ticket created successfully: {TicketId} for Customer: {CustomerId} with Organization: {OrganizationId}", 
-            createdTicket.Id, actualCustomerId, organizationId?.ToString() ?? "none");
+            var createdTicket = await _repository.CreateAsync(ticket);
+            _logger.LogInformation("Ticket created successfully: {TicketId} for Customer: {CustomerId} with Organization: {OrganizationId}", 
+                createdTicket.Id, actualCustomerId, organizationId?.ToString() ?? "none");
 
-        // Audit log
-        await AddAuditLogAsync(
-            createdTicket.Id,
-            AuditAction.Created,
-            description: $"Ticket created: {createdTicket.Title}");
+            // Audit log
+            await AddAuditLogAsync(
+                createdTicket.Id,
+                AuditAction.Created,
+                description: $"Ticket created: {createdTicket.Title}");
 
-        await PublishTicketCreatedEventAsync(createdTicket);
+            await _publishEndpoint.Publish(new TicketCreatedEvent
+            {
+                TicketId = createdTicket.Id,
+                CustomerId = createdTicket.CustomerId,
+                Timestamp = DateTime.UtcNow
+            });
 
-        return MapToDto(createdTicket);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return MapToDto(createdTicket);
+        }catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<TicketDto> UpdateAsync(Guid id, UpdateTicketRequest request)
@@ -274,65 +291,64 @@ public class TicketServiceImpl : ITicketService
         var oldStatus = ticket.Status.ToString();
         var oldPriority = ticket.Priority.ToString();
         var oldAgentId = ticket.AssignedAgentId?.ToString();
-
-        if (!string.IsNullOrWhiteSpace(request.Title))
+        
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            ticket.Title = request.Title;
-        }
+            if(!string.IsNullOrWhiteSpace(request.Title)) ticket.Title = request.Title;
+            if(!string.IsNullOrWhiteSpace(request.Description)) ticket.Description = request.Description;
 
-        if (!string.IsNullOrWhiteSpace(request.Description))
+            if(!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse<TicketStatus>(request.Status,out var status))
+            {
+                if(ticket.Status != status)
+                {
+                    ticket.Status = status;
+
+                    await AddAuditLogAsync(id,AuditAction.StatusChanged,"Status",oldStatus, status.ToString());
+
+                    await _publishEndpoint.Publish(new TicketStatusChangedEvent
+                    {
+                        TicketId = ticket.Id,
+                        OldStatus = oldStatus,
+                        NewStatus = status.ToString(),
+                        CustomerId = ticket.CustomerId,
+                        AgentId = ticket.AssignedAgentId,
+                        Timestamp = DateTime.UtcNow
+                    });
+                }
+            }
+
+            if(!string.IsNullOrWhiteSpace(request.Priority) && Enum.TryParse<TicketPriority>(request.Priority, out var priority))
+            {
+                if(ticket.Priority != priority)
+                {
+                    ticket.Priority = priority;
+
+                    await AddAuditLogAsync(id,AuditAction.PriorityChanged,"Priority",oldPriority,priority.ToString());
+
+                }
+            }
+            if(request.AssignedAgentId.HasValue)
+            {
+                if(ticket.AssignedAgentId != request.AssignedAgentId)
+                {
+                    ticket.AssignedAgentId = request.AssignedAgentId;
+
+                    await AddAuditLogAsync(id, AuditAction.Assigned, "AssignedAgentId",oldAgentId,ticket.AssignedAgentId.ToString());
+                }
+            }
+
+            var updatedTicket = await _repository.UpdateAsync(ticket);
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return MapToDto(updatedTicket);
+        }catch
         {
-            ticket.Description = request.Description;
+            await transaction.RollbackAsync();
+            throw;
         }
-
-        if (!string.IsNullOrWhiteSpace(request.Status) && 
-            Enum.TryParse<TicketStatus>(request.Status, out var status))
-        {
-            ticket.Status = status;
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Priority) && 
-            Enum.TryParse<TicketPriority>(request.Priority, out var priority))
-        {
-            ticket.Priority = priority;
-        }
-
-        if (request.AssignedAgentId.HasValue)
-        {
-            ticket.AssignedAgentId = request.AssignedAgentId.Value;
-        }
-
-        var updatedTicket = await _repository.UpdateAsync(ticket);
-        _logger.LogInformation("Ticket updated successfully: {TicketId}", id);
-
-        // Audit log for each changed field
-        if (oldTitle != updatedTicket.Title)
-        {
-            await AddAuditLogAsync(id, AuditAction.Updated, "Title", oldTitle, updatedTicket.Title);
-        }
-
-        if (oldDescription != updatedTicket.Description)
-        {
-            await AddAuditLogAsync(id, AuditAction.Updated, "Description", "(changed)", "(changed)");
-        }
-
-        if (oldStatus != updatedTicket.Status.ToString())
-        {
-            await AddAuditLogAsync(id, AuditAction.StatusChanged, "Status", oldStatus, updatedTicket.Status.ToString());
-            await PublishTicketStatusChangedEventAsync(updatedTicket, oldStatus);
-        }
-
-        if (oldPriority != updatedTicket.Priority.ToString())
-        {
-            await AddAuditLogAsync(id, AuditAction.PriorityChanged, "Priority", oldPriority, updatedTicket.Priority.ToString());
-        }
-
-        if (oldAgentId != updatedTicket.AssignedAgentId?.ToString())
-        {
-            await AddAuditLogAsync(id, AuditAction.Assigned, "AssignedAgentId", oldAgentId, updatedTicket.AssignedAgentId?.ToString());
-        }
-
-        return MapToDto(updatedTicket);
     }
 
     public async Task<TicketDto> AssignToAgentAsync(Guid ticketId, Guid agentId)
@@ -344,61 +360,90 @@ public class TicketServiceImpl : ITicketService
         {
             throw new KeyNotFoundException($"Ticket with id {ticketId} not found.");
         }
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            var oldAgentId = ticket.AssignedAgentId?.ToString();
+            ticket.AssignedAgentId = agentId;
+            ticket.Status = TicketStatus.Open;
 
-        var oldAgentId = ticket.AssignedAgentId?.ToString();
-        ticket.AssignedAgentId = agentId;
-        ticket.Status = TicketStatus.Open;
+            await _repository.UpdateAsync(ticket);
 
-        var updatedTicket = await _repository.UpdateAsync(ticket);
-        _logger.LogInformation("Ticket assigned successfully");
+            _logger.LogInformation("Ticket assigned successfully");
 
-        // Audit log
-        await AddAuditLogAsync(
-            ticketId,
-            AuditAction.Assigned,
-            fieldName: "AssignedAgentId",
-            oldValue: oldAgentId,
-            newValue: agentId.ToString());
+            // Audit log
+            await AddAuditLogAsync(
+                ticketId,
+                AuditAction.Assigned,
+                fieldName: "AssignedAgentId",
+                oldValue: oldAgentId,
+                newValue: agentId.ToString());
 
-        await PublishTicketAssignedEventAsync(updatedTicket);
+            await _publishEndpoint.Publish(new TicketAssignedEvent
+            {
+                TicketId = ticketId,
+                AgentId  = agentId,
+                CustomerId = ticket.CustomerId,
+                Timestamp = DateTime.UtcNow
+            });
 
-        return MapToDto(updatedTicket);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return MapToDto(ticket);
+        }catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<TicketDto> ChangeStatusAsync(Guid ticketId, string newStatus)
     {
         _logger.LogInformation("Changing ticket {TicketId} status to {NewStatus}", ticketId, newStatus);
 
+        var ticket = await _repository.GetByIdAsync(ticketId, false);
+        if (ticket == null) throw new KeyNotFoundException($"Ticket {ticketId} not found");
+
         if (!Enum.TryParse<TicketStatus>(newStatus, out var status))
         {
             throw new ArgumentException($"Invalid status: {newStatus}");
         }
-
-        var ticket = await _repository.GetByIdAsync(ticketId, includeComments: false);
-        if (ticket == null)
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            throw new KeyNotFoundException($"Ticket with id {ticketId} not found");
+            var oldStatus = ticket.Status.ToString();
+            ticket.Status = status;
+
+            await _repository.UpdateAsync(ticket);
+            _logger.LogInformation("Ticket status changed successfully");
+
+            // Audit log
+            await AddAuditLogAsync(
+                ticketId,
+                AuditAction.StatusChanged,
+                fieldName: "Status",
+                oldValue: oldStatus,
+                newValue: status.ToString());
+
+            await _publishEndpoint.Publish(new TicketStatusChangedEvent
+            {
+                TicketId = ticketId,
+                OldStatus = oldStatus,
+                NewStatus = status.ToString(),
+                CustomerId = ticket.CustomerId,
+                AgentId = ticket.AssignedAgentId,
+                Timestamp = DateTime.UtcNow
+            });
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return MapToDto(ticket);
+        }catch
+        {
+            await transaction.RollbackAsync();
+            throw;
         }
-
-        var oldStatus = ticket.Status.ToString();
-        ticket.Status = status;
-
-        var updatedTicket = await _repository.UpdateAsync(ticket);
-        _logger.LogInformation("Ticket status changed successfully");
-
-        // Audit log
-        await AddAuditLogAsync(
-            ticketId,
-            AuditAction.StatusChanged,
-            fieldName: "Status",
-            oldValue: oldStatus,
-            newValue: status.ToString());
-
-        await PublishTicketStatusChangedEventAsync(updatedTicket, oldStatus);
-
-        return MapToDto(updatedTicket);
     }
-
     public async Task DeleteAsync(Guid id)
     {
         _logger.LogInformation("Deleting ticket: {TicketId}", id);
@@ -423,27 +468,47 @@ public class TicketServiceImpl : ITicketService
             throw new KeyNotFoundException($"Ticket with id {ticketId} not found");
         }
 
-        var comment = new TicketComment
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            TicketId = ticketId,
-            UserId = userId,
-            Content = request.Content,
-            IsInternal = request.IsInternal
-        };
+            var comment = new TicketComment
+            {
+                TicketId = ticketId,
+                UserId = userId,
+                Content = request.Content,
+                IsInternal = request.IsInternal
+            };
 
-        await _repository.AddCommentAsync(comment);
-        _logger.LogInformation("Comment added successfully");
+            await _repository.AddCommentAsync(comment);
+            _logger.LogInformation("Comment added successfully");
 
-        // Audit log
-        await AddAuditLogAsync(
-            ticketId,
-            AuditAction.CommentAdded,
-            description: request.IsInternal ? "Internal comment added" : "Comment added");
+            // Audit log
+            await AddAuditLogAsync(
+                ticketId,
+                AuditAction.CommentAdded,
+                description: request.IsInternal ? "Internal comment added" : "Comment added");
 
-        await PublishCommentAddedEventAsync(ticket, comment);
+            await _publishEndpoint.Publish(new CommentAddedEvent
+            {
+                TicketId =ticketId,
+                CommentId = comment.Id,
+                UserId = comment.UserId,
+                Content = comment.Content,
+                CustomerId = ticket.CustomerId,
+                IsInternal = comment.IsInternal,
+                Timestamp =DateTime.UtcNow
+            });
 
-        var updatedTicket = await _repository.GetByIdAsync(ticketId, includeComments: true);
-        return MapToDto(updatedTicket!);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+            var updatedTicket = await _repository.GetByIdAsync(ticketId,true);
+
+            return MapToDto(updatedTicket!);
+        }catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<List<TicketAuditLogDto>> GetHistoryAsync(Guid ticketId)
@@ -501,66 +566,5 @@ public class TicketServiceImpl : ITicketService
             )).ToList()
         );
     }
-
-    private async Task PublishTicketCreatedEventAsync(Ticket ticket)
-    {
-        var eventData = new TicketCreatedEvent
-        {
-            TicketId = ticket.Id,
-            CustomerId = ticket.CustomerId,
-            Timestamp = DateTime.UtcNow
-        };
-
-        await _messagePublisher.PublishAsync(eventData, RoutingKeys.TicketCreated);
-        _logger.LogInformation("Published TicketCreatedEvent for ticket {TicketId}", ticket.Id);
-    }
-
-    private async Task PublishTicketAssignedEventAsync(Ticket ticket)
-    {
-        if (!ticket.AssignedAgentId.HasValue) return;
-
-        var eventData = new TicketAssignedEvent
-        {
-            TicketId = ticket.Id,
-            AgentId = ticket.AssignedAgentId.Value,
-            CustomerId = ticket.CustomerId,
-            Timestamp = DateTime.UtcNow
-        };
-
-        await _messagePublisher.PublishAsync(eventData, RoutingKeys.TicketAssigned);
-        _logger.LogInformation("Published TicketAssignedEvent for ticket {TicketId}", ticket.Id);
-    }
-
-    private async Task PublishTicketStatusChangedEventAsync(Ticket ticket, string oldStatus)
-    {
-        var eventData = new TicketStatusChangedEvent
-        {
-            TicketId = ticket.Id,
-            OldStatus = oldStatus,
-            NewStatus = ticket.Status.ToString(),
-            CustomerId = ticket.CustomerId,
-            AgentId = ticket.AssignedAgentId,
-            Timestamp = DateTime.UtcNow
-        };
-
-        await _messagePublisher.PublishAsync(eventData, RoutingKeys.TicketStatusChanged);
-        _logger.LogInformation("Published TicketStatusChangedEvent for ticket {TicketId}", ticket.Id);
-    }
-
-    private async Task PublishCommentAddedEventAsync(Ticket ticket, TicketComment comment)
-    {
-        var eventData = new CommentAddedEvent
-        {
-            TicketId = ticket.Id,
-            CommentId = comment.Id,
-            UserId = comment.UserId,
-            Content = comment.Content,
-            CustomerId = ticket.CustomerId,
-            IsInternal = comment.IsInternal,
-            Timestamp = DateTime.UtcNow
-        };
-
-        await _messagePublisher.PublishAsync(eventData, RoutingKeys.CommentAdded);
-        _logger.LogInformation("Published CommentAddedEvent for ticket {TicketId}", ticket.Id);
-    }
 }
+    

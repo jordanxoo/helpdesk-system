@@ -2,11 +2,13 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NotificationService.Configuration;
-using NotificationService.HealthChecks;
 using NotificationService.Services;
-using NotificationService.Workers;
+//using NotificationService.Workers;
 using Shared.Configuration;
-using Shared.Messaging;
+//using Shared.Messaging;
+using NotificationService.Consumers;
+using MassTransit;
+using Shared.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,17 +24,33 @@ builder.Services.Configure<MessagingSettings>(
 builder.Services.AddSingleton<IEmailService, EmailService>();
 builder.Services.AddSingleton<ISmsService, SmsService>();
 
-// Register RabbitMQ Consumer
-builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+// register masstransit
 
-//Register Email services
-builder.Services.AddScoped<IEmailService,EmailService>();
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<TicketCreatedConsumer>();
+    x.AddConsumer<UserRegisteredConsumer>();
+    x.AddConsumer<UserLoggedInConsumer>();
 
-//Register background servcie for consuming email events
+    x.UsingRabbitMq((context,cfg) =>
+    {
+        var messagingSettings = builder.Configuration
+            .GetSection("MessagingSettings")
+            .Get<MessagingSettings>();
 
-// Register Background Worker
-builder.Services.AddHostedService<NotificationWorker>();
+        if (messagingSettings == null)
+        {
+            throw new InvalidOperationException("MessagingSettings not configured");
+        }
+
+        cfg.Host(messagingSettings.HostName, "/", h =>
+        {
+            h.Username(messagingSettings.UserName);
+            h.Password(messagingSettings.Password);
+        });
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 
 
@@ -44,9 +62,8 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "Notification Service API", Version = "v1" });
 });
 
-// Health Checks - RabbitMQ connection
-builder.Services.AddHealthChecks()
-    .AddCheck<RabbitMqHealthCheck>("rabbitmq");
+// Health Checks - Basic health check
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

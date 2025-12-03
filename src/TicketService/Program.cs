@@ -16,6 +16,7 @@ using FluentValidation.AspNetCore;
 using FluentValidation;
 using TicketService.Validators;
 using TicketService.Middleware;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,7 +95,7 @@ builder.Services.AddHttpClient<IUserServiceClient,UserServiceClient>(client =>
 builder.Services.Configure<MessagingSettings>(
     builder.Configuration.GetSection("MessagingSettings"));
 
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -121,6 +122,36 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+// konfiguracja mass transit
+builder.Services.AddMassTransit( x =>
+{
+    x.AddEntityFrameworkOutbox<TicketDbContext>( o =>
+    {
+        o.QueryDelay = TimeSpan.FromSeconds(1);
+        o.UsePostgres();
+        o.UseBusOutbox();
+    });
+
+    x.UsingRabbitMq((context,cfg) =>
+    {
+        var messagingSettings = builder.Configuration
+        .GetSection("MessagingSettings")
+        .Get<Shared.Configuration.MessagingSettings>();
+
+        cfg.Host(messagingSettings.HostName, "/", h =>
+        {
+            h.Username(messagingSettings.UserName);
+            h.Password(messagingSettings.Password);
+        });
+        cfg.ConfigureEndpoints(context);
+    });
+});
+
+
+
+
+
+
 
 // Controllers
 builder.Services.AddControllers()

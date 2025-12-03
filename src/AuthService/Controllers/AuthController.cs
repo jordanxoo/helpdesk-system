@@ -1,13 +1,11 @@
+using MassTransit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 using Shared.Models;
 using Shared.Events;
-using Shared.Messaging;
 using AuthService.Data;
 using AuthService.Services;
-using Amazon.SQS.Model;
-using Shared.Constants;
 
 
 namespace AuthService.Controllers;
@@ -19,17 +17,17 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ITokenService _tokenService;
-    private readonly IMessagePublisher _messagePublisher;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager,
-        ITokenService tokenService, IMessagePublisher messagePublisher, ILogger<AuthController> logger)
+        ITokenService tokenService, IPublishEndpoint publishEndpoint, ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _tokenService = tokenService;
-        _messagePublisher = messagePublisher;
+        _publishEndpoint = publishEndpoint;
         _logger = logger;
     }
 
@@ -87,7 +85,7 @@ public class AuthController : ControllerBase
 
         try
         {
-            await _messagePublisher.PublishAsync(userRegisteredEvent, Shared.Constants.RoutingKeys.UserRegistered);
+            await _publishEndpoint.Publish(userRegisteredEvent);
             _logger.LogInformation("UserRegisteredEvent published for user: {Email}", user.Email);
         }
         catch (Exception ex)
@@ -154,7 +152,7 @@ public class AuthController : ControllerBase
         };
 
         try{
-            await _messagePublisher.PublishAsync(loginEvent,RoutingKeys.UserLoggedIn);
+            await _publishEndpoint.Publish(loginEvent);
             _logger.LogInformation("Publisher UserLoggedIn event for {Email}",user.Email);
 
         }catch(Exception ex)
