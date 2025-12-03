@@ -39,6 +39,10 @@ builder.Services.AddScoped<IUserService, UserServiceImpl>();
 builder.Services.Configure<Shared.Configuration.MessagingSettings>(
     builder.Configuration.GetSection("MessagingSettings"));
 
+// RabbitMQ Consumer for UserRegisteredEvent
+builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
+builder.Services.AddHostedService<UserEventConsumer>();
+
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
 

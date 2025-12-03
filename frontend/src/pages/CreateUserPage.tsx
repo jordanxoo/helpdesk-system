@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import Layout from '@/components/ui/Layout';
+import { authService } from '@/services/authService';
+import type { PasswordRequirements } from '@/types/auth.types';
 
 export default function CreateUserPage() {
     const navigate = useNavigate();
@@ -20,6 +22,46 @@ export default function CreateUserPage() {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
+    const [passwordRequirements, setPasswordRequirements] = useState<PasswordRequirements | null>(null);
+
+    useEffect(() => {
+        const fetchPasswordRequirements = async () => {
+            try {
+                const requirements = await authService.getPasswordRequirements();
+                setPasswordRequirements(requirements);
+            } catch (err) {
+                console.error('Failed to fetch password requirements:', err);
+            }
+        };
+        fetchPasswordRequirements();
+    }, []);
+
+    const validatePassword = (password: string): string | null => {
+        if (!passwordRequirements) {
+            // Fallback validation if requirements not loaded
+            if (password.length < 6) {
+                return 'Hasło musi mieć co najmniej 6 znaków';
+            }
+            return null;
+        }
+
+        if (password.length < passwordRequirements.minimumLength) {
+            return `Hasło musi mieć co najmniej ${passwordRequirements.minimumLength} znaków`;
+        }
+        if (passwordRequirements.requireLowercase && !/[a-z]/.test(password)) {
+            return 'Hasło musi zawierać małą literę';
+        }
+        if (passwordRequirements.requireUppercase && !/[A-Z]/.test(password)) {
+            return 'Hasło musi zawierać dużą literę';
+        }
+        if (passwordRequirements.requireDigit && !/\d/.test(password)) {
+            return 'Hasło musi zawierać cyfrę';
+        }
+        if (passwordRequirements.requireNonAlphanumeric && !/[^a-zA-Z0-9]/.test(password)) {
+            return 'Hasło musi zawierać znak specjalny';
+        }
+        return null;
+    };
 
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
@@ -32,8 +74,11 @@ export default function CreateUserPage() {
 
         if (!formData.password) {
             newErrors.password = 'Hasło jest wymagane';
-        } else if (formData.password.length < 6) {
-            newErrors.password = 'Hasło musi mieć co najmniej 6 znaków';
+        } else {
+            const passwordError = validatePassword(formData.password);
+            if (passwordError) {
+                newErrors.password = passwordError;
+            }
         }
 
         if (formData.password !== formData.confirmPassword) {
@@ -141,9 +186,14 @@ export default function CreateUserPage() {
                                         type="password"
                                         value={formData.password}
                                         onChange={handleChange}
-                                        placeholder="Minimum 6 znaków"
+                                        placeholder={passwordRequirements ? passwordRequirements.description : "Minimum 6 znaków"}
                                         className={errors.password ? 'border-red-500' : ''}
                                     />
+                                    {passwordRequirements && !errors.password && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {passwordRequirements.description}
+                                        </p>
+                                    )}
                                     {errors.password && (
                                         <p className="text-sm text-red-500">{errors.password}</p>
                                     )}

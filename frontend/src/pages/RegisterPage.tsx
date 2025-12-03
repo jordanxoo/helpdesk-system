@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@radix-ui/react-label";
 import {Card, CardContent, CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
 import {Link, useNavigate} from 'react-router-dom';
 import { authService } from '@/services/authService';
+import { userService } from '@/services/userService';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import type { PasswordRequirements } from '@/types/auth.types';
 
 export default function RegisterPage()
 {
@@ -22,6 +24,46 @@ export default function RegisterPage()
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [passwordRequirements, setPasswordRequirements] = useState<PasswordRequirements | null>(null);
+
+    useEffect(() => {
+        const fetchPasswordRequirements = async () => {
+            try {
+                const requirements = await authService.getPasswordRequirements();
+                setPasswordRequirements(requirements);
+            } catch (err) {
+                console.error('Failed to fetch password requirements:', err);
+            }
+        };
+        fetchPasswordRequirements();
+    }, []);
+
+    const validatePassword = (password: string): string | null => {
+        if (!passwordRequirements) {
+            // Fallback validation if requirements not loaded
+            if (password.length < 6) {
+                return 'Hasło musi mieć co najmniej 6 znaków';
+            }
+            return null;
+        }
+
+        if (password.length < passwordRequirements.minimumLength) {
+            return `Hasło musi mieć co najmniej ${passwordRequirements.minimumLength} znaków`;
+        }
+        if (passwordRequirements.requireLowercase && !/[a-z]/.test(password)) {
+            return 'Hasło musi zawierać małą literę';
+        }
+        if (passwordRequirements.requireUppercase && !/[A-Z]/.test(password)) {
+            return 'Hasło musi zawierać dużą literę';
+        }
+        if (passwordRequirements.requireDigit && !/\d/.test(password)) {
+            return 'Hasło musi zawierać cyfrę';
+        }
+        if (passwordRequirements.requireNonAlphanumeric && !/[^a-zA-Z0-9]/.test(password)) {
+            return 'Hasło musi zawierać znak specjalny';
+        }
+        return null;
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,8 +74,9 @@ export default function RegisterPage()
             return;
         }
 
-        if (formData.password.length < 6) {
-            setError('Hasło musi mieć co najmniej 6 znaków');
+        const passwordError = validatePassword(formData.password);
+        if (passwordError) {
+            setError(passwordError);
             return;
         }
 
@@ -50,7 +93,22 @@ export default function RegisterPage()
             });
             
             localStorage.setItem('token', response.token);
-            localStorage.setItem('user', JSON.stringify(response.user));
+            
+            // Wait for user to be synced to UserService via RabbitMQ
+            let user = null;
+            for (let i = 0; i < 3; i++) {
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    user = await userService.getProfile();
+                    break;
+                } catch {
+                    if (i === 2) throw new Error('Failed to fetch user profile');
+                }
+            }
+            
+            if (user) {
+                localStorage.setItem('user', JSON.stringify(user));
+            }
             
             setSuccess(true);
             setTimeout(() => {
@@ -143,6 +201,11 @@ export default function RegisterPage()
                                 onChange={handleChange}
                                 required
                                 />
+                                {passwordRequirements && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {passwordRequirements.description}
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="confirmPassword">Potwierdź hasło</Label>

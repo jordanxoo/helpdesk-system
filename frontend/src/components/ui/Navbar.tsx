@@ -11,9 +11,21 @@ interface NavbarProps {
 export default function Navbar({ currentPage }: NavbarProps) {
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const role = user.role as 'Customer' | 'Agent' | 'Administrator';
+
+    const getUserFromStorage = () => {
+        try {
+            const userStr = localStorage.getItem('user');
+            if (!userStr || userStr === 'undefined') {
+                return null;
+            }
+            return JSON.parse(userStr);
+        } catch {
+            return null;
+        }
+    };
+
+    const user = getUserFromStorage();
+    const role = user?.role as 'Customer' | 'Agent' | 'Administrator' | undefined;
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -45,12 +57,14 @@ export default function Navbar({ currentPage }: NavbarProps) {
             case 'Customer':
                 return 'Klient';
             default:
-                return role;
+                return role || 'Użytkownik';
         }
     };
 
     // Różne menu items dla różnych ról
     const getNavItems = () => {
+        if (!role) return [];
+        
         switch (role) {
             case 'Administrator':
                 return [
@@ -122,7 +136,7 @@ export default function Navbar({ currentPage }: NavbarProps) {
                     <div className="hidden md:flex items-center space-x-4">
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                             <User className="h-4 w-4" />
-                            <span>{user.fullName || user.email}</span>
+                            <span>{user?.fullName || user?.email}</span>
                         </div>
                         <Button
                             variant="outline"
@@ -175,7 +189,7 @@ export default function Navbar({ currentPage }: NavbarProps) {
                                 <Badge className={getRoleBadgeColor()}>
                                     {getRoleLabel()}
                                 </Badge>
-                                {user.fullName || user.email}
+                                {user?.fullName || user?.email}
                             </div>
                             <Button
                                 variant="outline"
