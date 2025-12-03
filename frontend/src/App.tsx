@@ -11,24 +11,100 @@ import EditUserPage from './pages/EditUserPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import NotificationsPage from './pages/NotificationsPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/tickets/create" element={<CreateTicketPage />}/>
-        <Route path="/tickets/:id" element={<TicketDetailsPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/users/create" element={<CreateUserPage />} />
-        <Route path="/users/:id/edit" element={<EditUserPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
+
+        {/* Protected routes - accessible by all logged-in users */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tickets" 
+          element={
+            <ProtectedRoute>
+              <TicketsPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tickets/create" 
+          element={
+            <ProtectedRoute allowedRoles={['Customer', 'Agent']}>
+              <CreateTicketPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/tickets/:id" 
+          element={
+            <ProtectedRoute>
+              <TicketDetailsPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/notifications" 
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Admin only routes */}
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute allowedRoles={['Administrator']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/users" 
+          element={
+            <ProtectedRoute allowedRoles={['Administrator']}>
+              <UsersPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/users/create" 
+          element={
+            <ProtectedRoute allowedRoles={['Administrator']}>
+              <CreateUserPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/users/:id/edit" 
+          element={
+            <ProtectedRoute allowedRoles={['Administrator']}>
+              <EditUserPage />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   );

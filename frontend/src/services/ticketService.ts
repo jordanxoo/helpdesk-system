@@ -27,6 +27,11 @@ export const ticketService = {
         return response.data;
     },
 
+    async updateTicketPriority(id:string,priority: string) : Promise<Ticket> {
+        const response = await api.patch<Ticket>(`/api/tickets/${id}/priority`, {newPriority: priority});
+        return response.data;
+    },
+
     async assignTicket(id: string, agentId: string): Promise<Ticket> {
         const response = await api.patch<Ticket>(`/api/tickets/${id}/assign`, { agentId });
         return response.data;

@@ -121,4 +121,31 @@ public class EmailService : IEmailService
 
         await SendEmailAsync(recipientEmail, subject, body);
     }
+
+
+    public async Task SendWelcomeEmailAsync(string email,string firstName)
+    {
+        var subject = "Witaj w Helpdesk System!";
+        var body = $@"
+        <h1>Cześć {firstName}!</h1>
+        <p>Dziękujemy za rejestrację w naszym systemie Helpdesk.</p>
+        <p>Możesz teraz zgłaszać problemy i śledzić ich status.</p>
+        <br/>
+        <p>Pozdrawiamy,<br/>Zespół Helpdesk</p>
+        ";
+        await SendEmailAsync(email, subject, body);
+    }
+
+    public async Task SendLoginEmailAsync(string email)
+    {
+        var subject = "Nowe logowanie do Twojego konta";
+        var body = $@"
+        <h2>Wykryto nowe logowanie</h2>
+        <p>Zalogowano się na Twoje konto ({email}) w systemie Helpdesk.</p>
+        <p>Data: {DateTime.UtcNow} (UTC)</p>
+        <p>Jeśli to nie Ty, skontaktuj się z administratorem.</p>
+        ";
+
+        await SendEmailAsync(email, subject, body);
+    }
 }

@@ -41,4 +41,6 @@ public static class RoutingKeys
     /// Contains full profile data - UserService creates user record.
     /// </summary>
     public const string UserRegistered = "user.registered";
+
+    public const string UserLoggedIn = "user.loggedin";
 }

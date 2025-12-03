@@ -192,6 +192,11 @@ using (var scope = app.Services.CreateScope())
             app.Logger.LogInformation("Role created: {Role}", role);
         }
     }
+    
+    // Seed testowych użytkowników - TYMCZASOWO WYŁĄCZONY (problem z FirstName NOT NULL)
+    // app.Logger.LogInformation("Initializing seed data...");
+    // await AuthService.SeedData.InitializeAsync(scope.ServiceProvider);
+    app.Logger.LogInformation("Seed data disabled - use manual SQL script instead");
 }
 
 

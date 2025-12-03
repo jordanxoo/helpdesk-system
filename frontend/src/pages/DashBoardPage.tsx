@@ -2,10 +2,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { mockStats, mockTickets } from '@/data/mockData';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Layout from '@/components/ui/Layout';
+import { useEffect } from 'react';
 
 export default function DashboardPage() {
+    const navigate = useNavigate();
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const role = user.role as 'Customer' | 'Agent' | 'Administrator';
+
+    useEffect(() => {
+        if (role === 'Administrator') {
+            navigate('/admin');
+        }
+    }, [role, navigate]);
+
     const getStatusVariant = (status: string) => {
         switch (status) {
             case 'Open':

@@ -7,6 +7,7 @@ using Shared.Messaging;
 using AuthService.Data;
 using AuthService.Services;
 using Amazon.SQS.Model;
+using Shared.Constants;
 
 
 namespace AuthService.Controllers;
@@ -145,12 +146,31 @@ public class AuthController : ControllerBase
         var refreshToken = _tokenService.GenerateRefreshToken();
         await _tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
 
+        var loginEvent = new UserLoggedInEvent{
+            UserId = Guid.Parse(user.Id),
+            Email = user.Email!,
+            Timestamp = DateTime.UtcNow
+
+        };
+
+        try{
+            await _messagePublisher.PublishAsync(loginEvent,RoutingKeys.UserLoggedIn);
+            _logger.LogInformation("Publisher UserLoggedIn event for {Email}",user.Email);
+
+        }catch(Exception ex)
+        {
+            _logger.LogError(ex,"Failed to publish login event");
+        }
+
+
+
         var response = new AuthTokenResponse(
             Token: accessToken,
             RefreshToken: refreshToken,
             ExpiresAt: DateTime.UtcNow.AddMinutes(60)
         );
 
+        
         return Ok(response);
     }
 

@@ -10,6 +10,7 @@ public interface IMessageConsumer : IDisposable
     /// <param name="handler">Callback to process messages. Returns true for ACK, false for NACK with requeue.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task SubscribeAsync<T>(
+        string routingKey,
         string queueName,
         Func<T, Task<bool>> handler,
         CancellationToken cancellationToken = default) where T : class;

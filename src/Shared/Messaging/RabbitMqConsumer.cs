@@ -28,6 +28,7 @@ public class RabbitMqConsumer : IMessageConsumer
 
 
     public async Task SubscribeAsync<T>(
+        string RoutingKey,
         string queueName,
         Func<T, Task<bool>> handler,
         CancellationToken cancellationToken = default) where T : class
@@ -51,7 +52,7 @@ public class RabbitMqConsumer : IMessageConsumer
             _channel.QueueBind(
                 queue: queueName,
                 exchange: _settings.ExchangeName,
-                routingKey: queueName);
+                routingKey: RoutingKey);
 
 
             _channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);

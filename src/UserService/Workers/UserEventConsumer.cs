@@ -43,7 +43,8 @@ public class UserEventConsumer : BackgroundService
     private async Task ConsumeUserRegisteredEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<UserRegisteredEvent>(
-            queueName: RoutingKeys.UserRegistered,
+            routingKey: RoutingKeys.UserRegistered,
+            queueName: "user-service-user-registered-queue",
             handler: async (userEvent) => await HandleUserRegisteredAsync(userEvent),
             cancellationToken: stoppingToken);
     }

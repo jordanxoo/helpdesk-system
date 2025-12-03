@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ArrowLeft, Send, Clock, User, AlertCircle } from 'lucide-react';
+import { userService } from '../services/userService';
 
 export default function TicketDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -18,14 +19,32 @@ export default function TicketDetailsPage() {
     const [newComment, setNewComment] = useState('');
     const [submittingComment, setSubmittingComment] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [agents,setAgents] = useState<any[]>([]);
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isCustomer = user.role === 'Customer';
     const isAgent = user.role === 'Agent' || user.role === 'Administrator';
     const isAdmin = user.role === 'Administrator';
+    const isAssignedToMe = ticket?.agentId === user.id;
 
     useEffect(() => {
         loadTicket();
+        if(isAdmin)
+        {
+            loadAgents();
+        }
     }, [id]);
+
+    const loadAgents = async () =>{
+        try{
+            const response = await userService.getAllUsers();
+            const agentList = response.filter((u : any ) => u.role === 'Agent');
+            setAgents(agentList);
+        }catch(error)
+        {
+            console.error('Failed to load agents: ',error);
+        }
+    }
 
     const loadTicket = async () => {
         if (!id) return;
@@ -70,6 +89,65 @@ export default function TicketDetailsPage() {
         }
     };
 
+    const handleAssignToMe = async () => {
+        if(!id)
+        {
+            return;
+        }
+        try{
+            await ticketService.assignTicket(id,user.id);
+            await loadTicket();
+        }catch(error)
+        {
+            console.error("Failed to assign ticket: ",error);
+        }
+    }
+
+    const handleUnassign = async () =>{
+        if(!id) { return;}
+        try{
+            await ticketService.assignTicket(id,""); // pusty string = unassign
+            await loadTicket();
+        }catch(error)
+        {
+            console.error("Failed to unassign ticket: ",error);
+        }
+    }
+    const handlePriorityChange = async (newPriority: string) => {
+        if(!id) return;
+        try
+        {
+            await ticketService.updateTicketPriority(id,newPriority);
+            await loadTicket();
+        }catch(error)
+        {
+            console.error("Failed to change priority: ",error);
+        }
+    }
+    const handleAssignAgent = async (agentID: string) => {
+        if(!id) return;
+        try{
+            await ticketService.assignTicket(id,agentID);
+            await loadTicket();
+        }catch(error)
+        {
+            console.error("Failed to assign agent: ",error);
+        }
+    }
+    const handleCloseTicket = async () => {
+        if(!id) return; 
+        if(confirm('Czy na pewno chcesz zamknąć to zgłoszenie?')){
+            try{
+                await ticketService.updateTicketStatus(id,'Closed');
+                await loadTicket();
+            }catch(error)
+            {
+                console.error('Failed to close ticket: ',error);
+            }
+        }
+    }
+
+ 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
             case 'Critical': return 'bg-red-500';
@@ -216,50 +294,164 @@ export default function TicketDetailsPage() {
                 </div>
 
                 <div className="space-y-6">
-                    {isAgent && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Zarządzanie</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Status</label>
-                                    <Select 
-                                        value={ticket.status} 
-                                        onValueChange={handleStatusChange}
-                                        disabled={updatingStatus}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Open">Open</SelectItem>
-                                            <SelectItem value="InProgress">In Progress</SelectItem>
-                                            <SelectItem value="Resolved">Resolved</SelectItem>
-                                            <SelectItem value="Closed">Closed</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {isAdmin && (
-                                    <Button 
-                                        variant="destructive" 
-                                        className="w-full"
-                                        onClick={async () => {
-                                            if (confirm('Czy na pewno chcesz usunąć to zgłoszenie?')) {
-                                                await ticketService.deleteTicket(ticket.id);
-                                                navigate('/tickets');
-                                            }
-                                        }}
-                                    >
-                                        Usuń zgłoszenie
-                                    </Button>
-                                )}
-                            </CardContent>
-                        </Card>
+                    isAgent && (
+    <Card>
+        <CardHeader>
+            <CardTitle>Zarządzanie zgłoszeniem</CardTitle>
+            <CardDescription>
+                        {isAdmin ? 'Panel administratora' : 'Panel agenta'}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    
+                    {/* Przycisk przypisz mnie - tylko dla agentów */}
+                    {!isAdmin && !ticket.agentId && (
+                        <Button 
+                            onClick={handleAssignToMe}
+                            className="w-full"
+                            variant="default"
+                        >
+                            <User className="mr-2 h-4 w-4" />
+                            Przypisz mnie do zgłoszenia
+                        </Button>
                     )}
 
-\                    <Card>
+                    {/* Przycisk usuń przypisanie - tylko dla przypisanego agenta */}
+                    {!isAdmin && isAssignedToMe && (
+                        <Button 
+                            onClick={handleUnassign}
+                            className="w-full"
+                            variant="outline"
+                        >
+                            Usuń moje przypisanie
+                        </Button>
+                    )}
+
+                    {/* Dropdown przypisania agenta - tylko dla admina */}
+                    {isAdmin && (
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">
+                                Przypisz agenta
+                            </label>
+                            <Select 
+                                value={ticket.agentId || ''} 
+                                onValueChange={handleAssignAgent}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Wybierz agenta..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">Nieprzypisany</SelectItem>
+                                    {agents.map((agent) => (
+                                        <SelectItem key={agent.id} value={agent.id}>
+                                            {agent.fullName || agent.email}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {/* Zmiana statusu */}
+                    <div>
+                        <label className="text-sm font-medium mb-2 block">Status</label>
+                        <Select 
+                            value={ticket.status} 
+                            onValueChange={handleStatusChange}
+                            disabled={updatingStatus}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Open">Otwarte</SelectItem>
+                                <SelectItem value="InProgress">W trakcie</SelectItem>
+                                <SelectItem value="Resolved">Rozwiązane</SelectItem>
+                                <SelectItem value="Closed">Zamknięte</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Zmiana priorytetu */}
+                    <div>
+                        <label className="text-sm font-medium mb-2 block">Priorytet</label>
+                        <Select 
+                            value={ticket.priority} 
+                            onValueChange={handlePriorityChange}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Low">Niski</SelectItem>
+                                <SelectItem value="Medium">Średni</SelectItem>
+                                <SelectItem value="High">Wysoki</SelectItem>
+                                <SelectItem value="Critical">Krytyczny</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Usuń zgłoszenie - tylko admin */}
+                    {isAdmin && (
+                        <Button 
+                            variant="destructive" 
+                            className="w-full"
+                            onClick={async () => {
+                                if (confirm('Czy na pewno chcesz usunąć to zgłoszenie?')) {
+                                    await ticketService.deleteTicket(ticket.id);
+                                    navigate('/tickets');
+                                }
+                            }}
+                        >
+                            Usuń zgłoszenie
+                        </Button>
+                    )}
+                </CardContent>
+            </Card>
+        )
+        {isCustomer && ticket.customerId === user.id && (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Akcje</CardTitle>
+                    <CardDescription>Zarządzaj swoim zgłoszeniem</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+         
+                    {ticket.status === 'Resolved' && (
+                        <div className="space-y-2">
+                            <p className="text-sm text-gray-600">
+                                Twoje zgłoszenie zostało rozwiązane. Możesz je zamknąć.
+                            </p>
+                            <Button 
+                                onClick={handleCloseTicket}
+                                className="w-full"
+                                variant="default"
+                            >
+                                Zamknij zgłoszenie
+                            </Button>
+                        </div>
+                    )}
+
+                    {ticket.status === 'Closed' && (
+                        <div className="p-4 bg-gray-100 rounded-lg">
+                            <p className="text-sm text-gray-600 text-center">
+                                ✓ Zgłoszenie zamknięte
+                            </p>
+                        </div>
+                    )}
+
+                    {ticket.status !== 'Resolved' && ticket.status !== 'Closed' && (
+                        <div className="p-4 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                                💡 Twoje zgłoszenie jest aktywnie przetwarzane. 
+                                Możesz dodawać komentarze poniżej.
+                            </p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+            )}
+                  <Card>
                         <CardHeader>
                             <CardTitle>Szczegóły</CardTitle>
                         </CardHeader>

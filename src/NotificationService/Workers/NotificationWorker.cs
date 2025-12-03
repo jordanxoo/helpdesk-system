@@ -33,7 +33,10 @@ public class NotificationWorker : BackgroundService
                 ConsumeTicketCreatedEventsAsync(stoppingToken),
                 ConsumeTicketAssignedEventsAsync(stoppingToken),
                 ConsumeTicketStatusChangedEventsAsync(stoppingToken),
-                ConsumeCommentAddedEventsAsync(stoppingToken)
+                ConsumeCommentAddedEventsAsync(stoppingToken),
+                ConsumeUserRegisteredEventAsync(stoppingToken),
+                ConsumeUserLoggedInEventAsync(stoppingToken)
+                
             };
 
             await Task.WhenAll(tasks);
@@ -48,7 +51,8 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeTicketCreatedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<TicketCreatedEvent>(
-            queueName: RoutingKeys.TicketCreated,
+            routingKey: RoutingKeys.TicketCreated,
+            queueName: "notification.ticket.created",
             handler: async (ticketEvent) => await HandleTicketCreatedAsync(ticketEvent),
             cancellationToken: stoppingToken);
     }
@@ -56,7 +60,8 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeTicketAssignedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<TicketAssignedEvent>(
-            queueName: RoutingKeys.TicketAssigned,
+            routingKey: RoutingKeys.TicketAssigned,
+            queueName: "notification.ticket.assigned",
             handler: async (assignedEvent) => await HandleTicketAssignedAsync(assignedEvent),
             cancellationToken: stoppingToken);
     }
@@ -64,7 +69,8 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeTicketStatusChangedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<TicketStatusChangedEvent>(
-            queueName: RoutingKeys.TicketStatusChanged,
+            routingKey: RoutingKeys.TicketStatusChanged,
+            queueName: "notification.ticket.status.changed",
             handler: async (statusEvent) => await HandleTicketStatusChangedAsync(statusEvent),
             cancellationToken: stoppingToken);
     }
@@ -72,8 +78,26 @@ public class NotificationWorker : BackgroundService
     private async Task ConsumeCommentAddedEventsAsync(CancellationToken stoppingToken)
     {
         await _messageConsumer.SubscribeAsync<CommentAddedEvent>(
-            queueName: RoutingKeys.CommentAdded,
+            routingKey: RoutingKeys.CommentAdded,
+            queueName: "notification.ticket.comment.added",
             handler: async (commentEvent) => await HandleCommentAddedAsync(commentEvent),
+            cancellationToken: stoppingToken);
+    }
+    private async Task ConsumeUserRegisteredEventAsync(CancellationToken stoppingToken)
+    {
+        await _messageConsumer.SubscribeAsync<UserRegisteredEvent>(
+            routingKey: RoutingKeys.UserRegistered,
+            queueName: "notification.user.registered",
+            handler: async (e) => await HandleUserRegisteredAsync(e),
+            cancellationToken: stoppingToken);
+    }
+
+    private async Task ConsumeUserLoggedInEventAsync(CancellationToken stoppingToken)
+    {
+        await _messageConsumer.SubscribeAsync<UserLoggedInEvent>(
+            routingKey: RoutingKeys.UserLoggedIn,
+            queueName: "notification.user.loggedin",
+            handler: async (e) => await HandleUserLoggedInAsync(e),
             cancellationToken: stoppingToken);
     }
 
@@ -200,6 +224,51 @@ public class NotificationWorker : BackgroundService
         }
     }
 
+    private async Task<bool> HandleUserRegisteredAsync(UserRegisteredEvent e)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Processing UserRegisteredEvent: UserId={UserId}, Email={Email}",
+                e.UserId, e.Email);
+
+            using var scope = _serviceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+            await emailService.SendWelcomeEmailAsync(e.Email, e.FirstName);
+            
+            _logger.LogInformation("UserRegisteredEvent processed successfully for user {UserId}", e.UserId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process UserRegisteredEvent for user {UserId}", e.UserId);
+            return false;
+        }
+    }
+
+    private async Task<bool> HandleUserLoggedInAsync(UserLoggedInEvent e)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Processing UserLoggedInEvent: UserId={UserId}, Email={Email}",
+                e.UserId, e.Email);
+
+            using var scope = _serviceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+            
+            await emailService.SendLoginEmailAsync(e.Email);
+            
+            _logger.LogInformation("UserLoggedInEvent processed successfully for user {UserId}", e.UserId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process UserLoggedInEvent for user {UserId}", e.UserId);
+            return false;
+        }
+    }
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("NotificationWorker stopping...");

@@ -33,4 +33,8 @@ public interface IEmailService
     /// Send new comment notification.
     /// </summary>
     Task SendNewCommentNotificationAsync(string recipientEmail, string ticketId, string commentContent);
+
+    Task SendWelcomeEmailAsync(string email, string firstName);
+    
+    Task SendLoginEmailAsync(string email);
 }

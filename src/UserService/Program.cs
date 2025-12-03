@@ -96,6 +96,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
+// Register RabbitMQ Message Consumer
+builder.Services.AddSingleton<Shared.Messaging.IMessageConsumer, Shared.Messaging.RabbitMqConsumer>();
+
+// Register BackgroundService for consuming RabbitMQ events
+builder.Services.AddHostedService<UserService.Workers.UserEventConsumer>();
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
@@ -111,6 +117,9 @@ if (app.Environment.IsDevelopment())
     {
         dbContext.Database.Migrate();
         app.Logger.LogInformation("Database migration completed successfully");
+        
+        // Seed testowych użytkowników
+        await UserService.SeedData.InitializeAsync(scope.ServiceProvider);
     }
     catch (Exception ex)
     {

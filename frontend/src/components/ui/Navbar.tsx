@@ -1,62 +1,125 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "./button";
-import { Menu, X, User, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Menu, X, User, LogOut, Shield, Users as UsersIcon, Ticket } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 
-interface NavbarProps{
+interface NavbarProps {
     currentPage?: string;
 }
 
-export default function Navbar( {currentPage}: NavbarProps)
-{
+export default function Navbar({ currentPage }: NavbarProps) {
     const navigate = useNavigate();
-    const [mobileMenuOpen,setMobileMenuOpen] = useState(false);
-
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const isAdmin = user.role === 'Administrator';
+    const role = user.role as 'Customer' | 'Agent' | 'Administrator';
 
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         navigate('/login');
+        // Force reload to clear any cached state
+        window.location.reload();
     };
 
-    const navItems = [
-        {label: 'Dashboard', path: '/dashboard', show: true},
-        {label: 'Zgłoszenia', path: '/tickets', show: true},
-        {label: 'Użytkownicy', path: '/users', show: isAdmin},
-        {label: 'Panel Admin', path: '/admin', show: isAdmin},
-        {label: 'Powiadomienia', path: '/notifications', show: true},
-        {label: 'Profil', path: '/profile', show: true},
-    ];
+    const getRoleBadgeColor = () => {
+        switch (role) {
+            case 'Administrator':
+                return 'bg-red-500 text-white';
+            case 'Agent':
+                return 'bg-purple-500 text-white';
+            case 'Customer':
+                return 'bg-blue-500 text-white';
+            default:
+                return 'bg-gray-500 text-white';
+        }
+    };
+
+    const getRoleLabel = () => {
+        switch (role) {
+            case 'Administrator':
+                return 'Administrator';
+            case 'Agent':
+                return 'Agent';
+            case 'Customer':
+                return 'Klient';
+            default:
+                return role;
+        }
+    };
+
+    // Różne menu items dla różnych ról
+    const getNavItems = () => {
+        switch (role) {
+            case 'Administrator':
+                return [
+                    { label: 'Panel Admin', path: '/admin', icon: Shield, show: true },
+                    { label: 'Użytkownicy', path: '/users', icon: UsersIcon, show: true },
+                    { label: 'Wszystkie zgłoszenia', path: '/tickets', icon: Ticket, show: true },
+                    { label: 'Profil', path: '/profile', icon: User, show: true },
+                ];
+            case 'Agent':
+                return [
+                    { label: 'Dashboard', path: '/dashboard', icon: Ticket, show: true },
+                    { label: 'Moje zgłoszenia', path: '/tickets', icon: Ticket, show: true },
+                    { label: 'Profil', path: '/profile', icon: User, show: true },
+                ];
+            case 'Customer':
+                return [
+                    { label: 'Dashboard', path: '/dashboard', icon: Ticket, show: true },
+                    { label: 'Moje zgłoszenia', path: '/tickets', icon: Ticket, show: true },
+                    { label: 'Nowe zgłoszenie', path: '/tickets/create', icon: Ticket, show: true },
+                    { label: 'Profil', path: '/profile', icon: User, show: true },
+                ];
+            default:
+                return [];
+        }
+    };
+
+    const navItems = getNavItems();
 
     return (
         <nav className="bg-white border-b border-gray-200 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
-                    <div className="flex items-center">
+                    {/* Logo */}
+                    <div className="flex items-center space-x-4">
                         <button
-                            onClick={() => navigate('/dashboard')}
+                            onClick={() => {
+                                // Różne przekierowania dla różnych ról
+                                if (role === 'Administrator') navigate('/admin');
+                                else navigate('/dashboard');
+                            }}
                             className="text-2xl font-bold text-slate-900 hover:text-blue-600 transition-colors"
                         >
                             HelpdeskSystem
                         </button>
+                        <Badge className={getRoleBadgeColor()}>
+                            {getRoleLabel()}
+                        </Badge>
                     </div>
 
-                    <div className="hidden md:flex items-center space-x-4">
-                        {navItems.map((item) => 
-                            item.show && (
+                    {/* Desktop Navigation */}
+                    <div className="hidden md:flex items-center space-x-2">
+                        {navItems.map((item) => {
+                            const Icon = item.icon;
+                            return item.show && (
                                 <Button
                                     key={item.path}
                                     variant={currentPage === item.path ? 'default' : 'ghost'}
                                     onClick={() => navigate(item.path)}
+                                    className="flex items-center gap-2"
                                 >
+                                    <Icon className="h-4 w-4" />
                                     {item.label}
                                 </Button>
-                            )
-                        )}
+                            );
+                        })}
                     </div>
-                     <div className="hidden md:flex items-center space-x-4">
+
+                    {/* User Menu */}
+                    <div className="hidden md:flex items-center space-x-4">
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                             <User className="h-4 w-4" />
                             <span>{user.fullName || user.email}</span>
@@ -71,6 +134,7 @@ export default function Navbar( {currentPage}: NavbarProps)
                         </Button>
                     </div>
 
+                    {/* Mobile menu button */}
                     <div className="md:hidden">
                         <Button
                             variant="ghost"
@@ -86,10 +150,12 @@ export default function Navbar( {currentPage}: NavbarProps)
                     </div>
                 </div>
 
+                {/* Mobile Navigation */}
                 {mobileMenuOpen && (
                     <div className="md:hidden pb-4 space-y-2">
-                        {navItems.map((item) =>
-                            item.show && (
+                        {navItems.map((item) => {
+                            const Icon = item.icon;
+                            return item.show && (
                                 <Button
                                     key={item.path}
                                     variant={currentPage === item.path ? 'default' : 'ghost'}
@@ -97,14 +163,18 @@ export default function Navbar( {currentPage}: NavbarProps)
                                         navigate(item.path);
                                         setMobileMenuOpen(false);
                                     }}
-                                    className="w-full justify-start"
+                                    className="w-full justify-start flex items-center gap-2"
                                 >
+                                    <Icon className="h-4 w-4" />
                                     {item.label}
                                 </Button>
-                            )
-                        )}
+                            );
+                        })}
                         <div className="pt-2 border-t">
-                            <div className="px-4 py-2 text-sm text-gray-700">
+                            <div className="px-4 py-2 text-sm text-gray-700 flex items-center gap-2">
+                                <Badge className={getRoleBadgeColor()}>
+                                    {getRoleLabel()}
+                                </Badge>
                                 {user.fullName || user.email}
                             </div>
                             <Button
@@ -121,5 +191,4 @@ export default function Navbar( {currentPage}: NavbarProps)
             </div>
         </nav>
     );
-
 }
