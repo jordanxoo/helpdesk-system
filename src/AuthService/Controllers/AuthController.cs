@@ -21,8 +21,11 @@ public class AuthController : ControllerBase
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
-        UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager,
-        ITokenService tokenService, IPublishEndpoint publishEndpoint, ILogger<AuthController> logger)
+        UserManager<ApplicationUser> userManager, 
+        SignInManager<ApplicationUser> signInManager,
+        ITokenService tokenService, 
+        IPublishEndpoint publishEndpoint, 
+        ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -77,9 +80,9 @@ public class AuthController : ControllerBase
         {
             UserId = Guid.Parse(user.Id),
             Email = user.Email!,
-            FirstName = request.FirstName,      // From request - not stored in Auth
-            LastName = request.LastName,        // From request - not stored in Auth
-            PhoneNumber = request.PhoneNumber,  // From request - not stored in Auth
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            PhoneNumber = request.PhoneNumber,
             Role = request.Role.ToString()
         };
 
@@ -109,7 +112,6 @@ public class AuthController : ControllerBase
 
         return CreatedAtAction(nameof(Register), response);
     }
-
     /// <summary>
     /// Login user - verifies credentials and returns JWT token.
     /// To get user profile, call GET /api/users/me with the token.
@@ -137,30 +139,30 @@ public class AuthController : ControllerBase
         }
 
         _logger.LogInformation("User logged in successfully: {Email}", request.Email);
-
+        
         // Generate JWT tokens
         var roles = await _userManager.GetRolesAsync(user);
         var accessToken = _tokenService.GenerateAccessToken(user, roles);
         var refreshToken = _tokenService.GenerateRefreshToken();
         await _tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
 
-        var loginEvent = new UserLoggedInEvent{
-            UserId = Guid.Parse(user.Id),
-            Email = user.Email!,
-            Timestamp = DateTime.UtcNow
-
-        };
-
-        try{
-            await _publishEndpoint.Publish(loginEvent);
-            _logger.LogInformation("Publisher UserLoggedIn event for {Email}",user.Email);
-
-        }catch(Exception ex)
+        // Publish login event (non-critical, fire-and-forget)
+        try
         {
-            _logger.LogError(ex,"Failed to publish login event");
+            var loginEvent = new UserLoggedInEvent
+            {
+                UserId = Guid.Parse(user.Id),
+                Email = user.Email!,
+                Timestamp = DateTime.UtcNow
+            };
+            
+            await _publishEndpoint.Publish(loginEvent);
+            _logger.LogInformation("Published UserLoggedIn event for {Email}", user.Email);
         }
-
-
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish login event (non-critical)");
+        }
 
         var response = new AuthTokenResponse(
             Token: accessToken,
@@ -168,10 +170,8 @@ public class AuthController : ControllerBase
             ExpiresAt: DateTime.UtcNow.AddMinutes(60)
         );
 
-        
         return Ok(response);
     }
-
     //odswiezanie tokenu 
 
     [HttpPost("logout")]

@@ -95,21 +95,32 @@ builder.Services.AddHealthChecks()
 // MassTransit Configuration
 builder.Services.AddMassTransit(x =>
 {
+
+    x.AddEntityFrameworkOutbox<AuthDbContext>(o =>
+    {
+        o.UsePostgres();
+        o.UseBusOutbox();
+        o.QueryDelay = TimeSpan.FromSeconds(1);
+    });
+    var messagingSettings = builder.Configuration
+    .GetSection("MessagingSettings").Get<MessagingSettings>();
+    
     x.UsingRabbitMq((context, cfg) =>
     {
-        var messagingSettings = builder.Configuration
-            .GetSection("MessagingSettings").Get<MessagingSettings>();
-        
-        if (messagingSettings != null)
+        if(messagingSettings != null)
         {
-            cfg.Host(messagingSettings.HostName, "/", h =>
-            {
+            cfg.Host(messagingSettings.HostName,messagingSettings.VirtualHost, h =>{
                 h.Username(messagingSettings.UserName);
                 h.Password(messagingSettings.Password);
             });
-        }
+        }    
+        cfg.ConfigureEndpoints(context);
+    
     });
 });
+
+
+
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 

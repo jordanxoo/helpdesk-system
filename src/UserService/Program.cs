@@ -1,15 +1,18 @@
 using System.Text;
 using System.Text.Json;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Configuration;
 using Shared.Messaging;
 using UserService.Data;
 using UserService.Repositories;
 using UserService.Services;
 using UserService.Workers;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,9 +42,32 @@ builder.Services.AddScoped<IUserService, UserServiceImpl>();
 builder.Services.Configure<Shared.Configuration.MessagingSettings>(
     builder.Configuration.GetSection("MessagingSettings"));
 
-// RabbitMQ Consumer for UserRegisteredEvent
-builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
-builder.Services.AddHostedService<UserEventConsumer>();
+// RabbitMQ Consumer for UserRegisteredEvent - DEPRECATED, now using massTransit for services communicationk
+// builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
+// builder.Services.AddHostedService<UserEventConsumer>();
+
+
+var messagingSettings = builder.Configuration.GetSection("MessagingSettings").Get<MessagingSettings>();
+
+builder.Services.AddMassTransit( x =>
+{
+    x.AddConsumer<UserService.Consumers.UserRegisteredConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        if(messagingSettings != null)
+        {
+            cfg.Host(messagingSettings.HostName, messagingSettings.VirtualHost, h =>
+            {
+                h.Username(messagingSettings.HostName);
+                h.Password(messagingSettings.Password);
+            });
+
+        }
+    cfg.ConfigureEndpoints(context);
+    });
+});
+
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
@@ -100,11 +126,11 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
-// Register RabbitMQ Message Consumer
-builder.Services.AddSingleton<Shared.Messaging.IMessageConsumer, Shared.Messaging.RabbitMqConsumer>();
+// Register RabbitMQ Message Consumer DEPRECATED
+// builder.Services.AddSingleton<Shared.Messaging.IMessageConsumer, Shared.Messaging.RabbitMqConsumer>();
 
-// Register BackgroundService for consuming RabbitMQ events
-builder.Services.AddHostedService<UserService.Workers.UserEventConsumer>();
+// // Register BackgroundService for consuming RabbitMQ events
+// builder.Services.AddHostedService<UserService.Workers.UserEventConsumer>();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
