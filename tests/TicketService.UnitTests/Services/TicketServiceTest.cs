@@ -1,6 +1,7 @@
 using System.Dynamic;
 using Bogus;
 using FluentAssertions;
+using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
@@ -23,11 +24,13 @@ public class TicketServiceTests
 {
     
     private readonly ITicketRepository _ticketRepoMock = Substitute.For<ITicketRepository>();
-    private readonly IMessagePublisher _messagePublisherMock = Substitute.For<IMessagePublisher>();
+    private readonly IPublishEndpoint _messagePublisherMock = Substitute.For<IPublishEndpoint>();
     private readonly IMessageConsumer _messageConsumerMock = Substitute.For<IMessageConsumer>();
     private readonly IUserServiceClient _userClientMock = Substitute.For<IUserServiceClient>();
     private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
     private readonly ILogger<TicketServiceImpl> _loggerMock = Substitute.For<ILogger<TicketServiceImpl>>();
+
+    private readonly IFileStorageService _fileStorageService = Substitute.For<IFileStorageService>();
 
     // sut - system under test
     private readonly TicketServiceImpl _sut; 
@@ -37,7 +40,7 @@ public class TicketServiceTests
     public TicketServiceTests()
     {
         _sut  = new TicketServiceImpl(_ticketRepoMock, null!,
-        _messagePublisherMock,_userClientMock, _httpContextAccessor, _loggerMock);
+        _messagePublisherMock,_userClientMock, _httpContextAccessor, _loggerMock, _fileStorageService);
     }
 
     [Fact]
@@ -45,7 +48,7 @@ public class TicketServiceTests
     {
         var userID = Guid.NewGuid();
         var userRole = "Customer";
-
+        
         var request = new CreateTicketRequest(
             Title: _faker.Lorem.Sentence(),
             Description: _faker.Lorem.Paragraph(),
@@ -70,9 +73,9 @@ public class TicketServiceTests
     
         await _ticketRepoMock.Received(1).CreateAsync(Arg.Any<Ticket>());
 
-        await _messagePublisherMock.Received(1).PublishAsync(
+        await _messagePublisherMock.Received(1).Publish(
             Arg.Is<object>(msg => msg.GetType().Name == "TicketCreatedEvent"),
-            Arg.Is<string>(key => key == "ticket-created")
+            Arg.Any<CancellationToken>()
         );
     }
 

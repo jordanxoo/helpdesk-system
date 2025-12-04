@@ -17,8 +17,38 @@ using FluentValidation;
 using TicketService.Validators;
 using TicketService.Middleware;
 using MassTransit;
+using Amazon.S3;
+using TicketService.Configuration;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+
+// Konfiguracja S3
+var fileSettingsSection = builder.Configuration.GetSection("FileStorage");
+builder.Services.Configure<FileStorageSettings>(fileSettingsSection);
+var fileSettings = fileSettingsSection.Get<FileStorageSettings>();
+
+if(fileSettings == null)
+{
+    fileSettings = new FileStorageSettings();
+}
+
+// rejestracja klienta AWS (minIO)
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var config = new AmazonS3Config
+    {
+        ServiceURL = fileSettings!.ServiceUrl,
+        ForcePathStyle = true // wazne dla minio inaczej bedzie probowac robic bucket.minio:9000
+    };
+    return new AmazonS3Client(fileSettings.AccessKey,fileSettings.SecretKey,config);
+});
+//rejestracja serwisu
+builder.Services.AddScoped<IFileStorageService,S3FileStorageService>();
+
 
 
 

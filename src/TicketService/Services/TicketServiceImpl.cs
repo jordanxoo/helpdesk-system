@@ -9,6 +9,7 @@ using Shared.HttpClients;
 using TicketService.Data;
 using TicketService.Repositories;
 using MassTransit;
+using TicketService.Configuration;
 
 namespace TicketService.Services;
 
@@ -22,6 +23,7 @@ public class TicketServiceImpl : ITicketService
     private readonly IUserServiceClient _userServiceClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<TicketServiceImpl> _logger;
+    private readonly IFileStorageService _fileStorageService;
 
     public TicketServiceImpl(
         ITicketRepository repository,
@@ -29,7 +31,8 @@ public class TicketServiceImpl : ITicketService
         IPublishEndpoint publishEndpoint,
         IUserServiceClient userServiceClient,
         IHttpContextAccessor httpContextAccessor,
-        ILogger<TicketServiceImpl> logger)
+        ILogger<TicketServiceImpl> logger,
+        IFileStorageService fileStorageService)
     {
         _repository = repository;
         _dbContext = dbContext;
@@ -37,7 +40,72 @@ public class TicketServiceImpl : ITicketService
         _userServiceClient = userServiceClient;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+        _fileStorageService = fileStorageService;
     }
+
+
+    /// <summary>
+    /// dodawanie attachmentu do ticketu z oblsuga transakcji outbox -> massTransit
+    /// </summary>
+    
+    public async Task<Shared.Models.TicketAttachment> AddAttachmentAsync(Guid ticketID, Guid userId, IFormFile file)
+    {
+        _logger.LogInformation("Adding attachment to ticket {TicketID} by user {userID}", ticketID, userId);
+    
+        var ticket = await _repository.GetByIdAsync(ticketID, false)
+            ?? throw new KeyNotFoundException($"Ticket {ticketID} not found");
+    
+        var fileID = Guid.NewGuid();
+        var fileExtension = Path.GetExtension(file.FileName);
+        var storagePath = $"tickets/{ticketID}/{fileID}{fileExtension}";
+
+        await _fileStorageService.UploadFileAsync(file, storagePath);
+
+        Shared.Models.TicketAttachment? attachment = null;
+
+        var executionStrategy = _dbContext.Database.CreateExecutionStrategy();
+        
+        try
+        {
+            await executionStrategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await _dbContext.Database.BeginTransactionAsync();
+                
+                attachment = new Shared.Models.TicketAttachment
+                {
+                    Id = fileID,
+                    TicketId = ticketID,
+                    UploadedById = userId,
+                    FileName = file.FileName,
+                    ContentType = file.ContentType,
+                    FileSizeBytes = file.Length,
+                    StoragePath = storagePath,
+                    UploadedAt = DateTime.UtcNow
+                };
+
+                _dbContext.TicketAttachments.Add(attachment);
+
+                await AddAuditLogAsync(ticketID, AuditAction.AttachmentAdded, description: $"File added: {file.FileName}");
+
+                // TODO ticketattachment added event
+                // await _publishEndpoint.Publish();
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+            });
+
+            attachment!.DownloadUrl = _fileStorageService.GetPresignedUrl(storagePath);
+            return attachment;
+        }
+        catch
+        {
+            await _fileStorageService.DeleteFileAsync(storagePath);
+            throw;
+        }
+    }    
+
+
+
 
     /// <summary>
     /// Gets the current user ID from JWT token
@@ -541,7 +609,7 @@ public class TicketServiceImpl : ITicketService
 
     // Private helper methods
 
-    private static TicketDto MapToDto(Ticket ticket)
+    private TicketDto MapToDto(Ticket ticket)
     {
         return new TicketDto(
             Id: ticket.Id,
@@ -557,13 +625,33 @@ public class TicketServiceImpl : ITicketService
             CreatedAt: ticket.CreatedAt,
             UpdatedAt: ticket.UpdatedAt,
             ResolvedAt: ticket.ResolvedAt,
-            Comments: ticket.Comments.Select(c => new CommentDto(
+            Comments: [.. ticket.Comments.Select(c => new CommentDto(
                 Id: c.Id,
                 UserId: c.UserId,
                 Content: c.Content,
                 CreatedAt: c.CreatedAt,
                 IsInternal: c.IsInternal
-            )).ToList()
+            ))],
+
+            Attachment: [.. ticket.Attachments.Select(a =>
+            {   
+                //generowanie linku wewnatrz sieci docker
+                var internalUrl = _fileStorageService.GetPresignedUrl(a.StoragePath);
+
+                // hack dla hosta: zmiana minio na localhost zeby przegladarka mogla pobrac plik
+                // remove in production
+                var browserUrl = internalUrl.Replace("minio:9000","localhost:9000");
+
+                return new TicketAttachmentDto(
+                    id: a.Id,
+                    FileName: a.FileName,
+                    ContentType: a.ContentType,
+                    FileSizeBytes: a.FileSizeBytes,
+                    DownloadUrl: browserUrl,
+                    UploadedAt: DateTime.UtcNow
+                );
+
+            })]
         );
     }
 }

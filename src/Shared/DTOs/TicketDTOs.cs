@@ -43,7 +43,8 @@ public record TicketDto(
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     DateTime? ResolvedAt,
-    List<CommentDto> Comments
+    List<CommentDto> Comments,
+    List<TicketAttachmentDto> Attachment
 );
 
 
@@ -87,3 +88,13 @@ public record TicketAuditLogDto(
     string? Description,
     DateTime CreatedAt
 );
+
+public record TicketAttachmentDto(
+    Guid id,
+    string FileName,
+    string ContentType,
+    long FileSizeBytes,
+    string DownloadUrl,
+    DateTime UploadedAt
+);
+

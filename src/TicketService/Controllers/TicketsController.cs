@@ -227,4 +227,43 @@ public class TicketsController : ControllerBase
             var history = await _ticketService.GetHistoryAsync(id);
             return Ok(history);
     }
+
+
+    [HttpPost("{id}/attachments")]
+    // [Authorize] - dziedziczy z klasy
+    [ProducesResponseType(typeof(Shared.Models.TicketAttachment),StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+
+    public async Task<ActionResult<Shared.Models.TicketAttachment>> UploadAttachment(Guid id, IFormFile file)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if(string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userID))
+        {
+            return Unauthorized(new {message = "Invalid user ID"});
+        }
+
+        if(file == null || file.Length == 0)
+        {
+            return BadRequest(new {message = "No file upload"});
+        }
+
+        if(file.Length > 10 * 1024 * 1024)
+        {
+            return BadRequest(new {message = "File to large (max 10 MB)"});
+        }
+
+        try
+        {
+            var attachment = await _ticketService.AddAttachmentAsync(id,userID,file);
+            return Ok(attachment);
+        }
+        catch(KeyNotFoundException ex)
+        {
+            return NotFound(new {message = ex.Message});
+        }
+    }
+
+
 }
+

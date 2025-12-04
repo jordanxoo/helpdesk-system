@@ -19,6 +19,8 @@ public class TicketRepository : ITicketRepository
     {
         var query = _context.Tickets.AsQueryable();
 
+        query = query.Include(t => t.Attachments);
+
         if (includeComments)
         {
             query = query.Include(t => t.Comments.OrderBy(c => c.CreatedAt));

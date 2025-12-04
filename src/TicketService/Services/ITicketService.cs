@@ -22,4 +22,7 @@ public interface ITicketService
     
     // Historia zmian ticketa (audit log)
     Task<List<TicketAuditLogDto>> GetHistoryAsync(Guid ticketId);
+
+    //dodawanie attachmentow do ticketow
+    Task<Shared.Models.TicketAttachment> AddAttachmentAsync(Guid ticketID, Guid userID, IFormFile file);
 }
