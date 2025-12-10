@@ -88,7 +88,15 @@ builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<ISlaRepository, SlaRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 
+// Redis Cache
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "Helpdesk_";  
+});
+
 builder.Services.AddScoped<ITicketService, TicketServiceImpl>();
+builder.Services.Decorate<ITicketService, CachedTicketService>();
 
 // HTTP Client for UserService communication
 var userServiceUrl = builder.Configuration["Services:UserService:Url"] 

@@ -31,12 +31,22 @@ builder.Services.AddDbContext<UserDbContext>(options =>
         }
     )
 );
+// Redis cache
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "Helpdesk_";
+});
+
 
 // Dependency Injection - Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Dependency Injection - Services
-builder.Services.AddScoped<IUserService, UserServiceImpl>();
+builder.Services.AddScoped<IUserService, UserServiceImpl>(); 
+builder.Services.Decorate<IUserService,CachedUserService>();
+
 
 // Messaging Settings
 builder.Services.Configure<Shared.Configuration.MessagingSettings>(
@@ -59,7 +69,7 @@ builder.Services.AddMassTransit( x =>
         {
             cfg.Host(messagingSettings.HostName, messagingSettings.VirtualHost, h =>
             {
-                h.Username(messagingSettings.HostName);
+                h.Username(messagingSettings.UserName);
                 h.Password(messagingSettings.Password);
             });
 

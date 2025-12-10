@@ -49,6 +49,16 @@ services:
     volumes:
       - minio-data:/data
 
+  # redis - distributed cashing
+  redis:
+    image: redis:alpine
+    container_name: helpdesk-redis
+    ports:
+    - "6379:6379"
+    networks:
+    - helpdesk-network
+
+
   # RabbitMQ Message Broker
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -100,6 +110,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: ${TICKET_DB_CONNECTION}
+      ConnectionStrings__Redis: "helpdesk-redis:6379"
       MessagingSettings__HostName: ${RABBITMQ_HOST}
       MessagingSettings__UserName: ${RABBITMQ_USER}
       MessagingSettings__Password: ${RABBITMQ_PASSWORD}
@@ -121,6 +132,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      redis:
+        condition: service_started
     networks:
       - helpdesk-network
 
@@ -132,6 +145,7 @@ services:
     container_name: helpdesk-users
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Redis: "helpdesk-redis:6379"
       ConnectionStrings__DefaultConnection: ${USER_DB_CONNECTION}
       MessagingSettings__HostName: ${RABBITMQ_HOST}
       MessagingSettings__UserName: ${RABBITMQ_USER}
@@ -148,6 +162,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - helpdesk-network
 
