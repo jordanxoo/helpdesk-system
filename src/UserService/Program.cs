@@ -74,7 +74,12 @@ builder.Services.AddMassTransit( x =>
             });
 
         }
-    cfg.ConfigureEndpoints(context);
+        
+       
+        cfg.ReceiveEndpoint("user-service-user-registered", e =>
+        {
+            e.ConfigureConsumer<UserService.Consumers.UserRegisteredConsumer>(context);
+        });
     });
 });
 

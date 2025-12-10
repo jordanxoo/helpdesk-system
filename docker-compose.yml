@@ -166,6 +166,18 @@ services:
         condition: service_started
     networks:
       - helpdesk-network
+  #redis GUI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: helpdesk-redis-gui
+    environment:
+      REDIS_HOSTS: local:helpdesk-redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - helpdesk-network
 
   # Notification Service
   notification-service:
@@ -175,6 +187,7 @@ services:
     container_name: helpdesk-notifications
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Redis: "helpdesk-redis:6379"
       MessagingSettings__HostName: helpdesk-rabbitmq
       MessagingSettings__UserName: ${RABBITMQ_USER}
       MessagingSettings__Password: ${RABBITMQ_PASSWORD}
@@ -191,6 +204,8 @@ services:
       rabbitmq:
         condition: service_healthy
       mailpit:
+        condition: service_started
+      redis:
         condition: service_started
     networks:
       - helpdesk-network

@@ -83,7 +83,7 @@ export default function RegisterPage()
         setLoading(true);
 
         try {
-            const response = await authService.register({
+            await authService.register({
                 email: formData.email.trim(),
                 password: formData.password,
                 firstName: formData.firstName.trim(),
@@ -92,27 +92,14 @@ export default function RegisterPage()
                 role: 'Customer'
             });
             
-            localStorage.setItem('token', response.token);
-            
-            // Wait for user to be synced to UserService via RabbitMQ
-            let user = null;
-            for (let i = 0; i < 3; i++) {
-                try {
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    user = await userService.getProfile();
-                    break;
-                } catch {
-                    if (i === 2) throw new Error('Failed to fetch user profile');
-                }
-            }
-            
-            if (user) {
-                localStorage.setItem('user', JSON.stringify(user));
-            }
-            
+            // Rejestracja udana - przekieruj na stronę logowania
             setSuccess(true);
             setTimeout(() => {
-                navigate('/dashboard');
+                navigate('/login', { 
+                    state: { 
+                        message: 'Konto utworzone pomyślnie! Zaloguj się aby kontynuować.' 
+                    } 
+                });
             }, 1500);
         } catch (err: any) {
             console.error('Registration failed:', err);

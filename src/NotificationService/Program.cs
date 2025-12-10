@@ -24,6 +24,14 @@ builder.Services.Configure<MessagingSettings>(
 builder.Services.AddSingleton<IEmailService, EmailService>();
 builder.Services.AddSingleton<ISmsService, SmsService>();
 
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "Helpdesk_";
+});
+
+builder.Services.AddScoped<INotificationQueueService, RedisNotificationQueueService>();
+
 // register masstransit
 
 builder.Services.AddMassTransit(x =>
@@ -48,7 +56,22 @@ builder.Services.AddMassTransit(x =>
             h.Username(messagingSettings.UserName);
             h.Password(messagingSettings.Password);
         });
-        cfg.ConfigureEndpoints(context);
+        
+        // Konfiguracja endpointów z unikalnymi nazwami kolejek dla NotificationService
+        cfg.ReceiveEndpoint("notification-service-ticket-created", e =>
+        {
+            e.ConfigureConsumer<TicketCreatedConsumer>(context);
+        });
+        
+        cfg.ReceiveEndpoint("notification-service-user-registered", e =>
+        {
+            e.ConfigureConsumer<UserRegisteredConsumer>(context);
+        });
+        
+        cfg.ReceiveEndpoint("notification-service-user-logged-in", e =>
+        {
+            e.ConfigureConsumer<UserLoggedInConsumer>(context);
+        });
     });
 });
 

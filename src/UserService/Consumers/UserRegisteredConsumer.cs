@@ -42,7 +42,8 @@ public class UserRegisteredConsumer : IConsumer<UserRegisteredEvent>
                 message.Role.ToString()
             );
 
-            await _userService.CreateAsync(createRequest);
+
+            await _userService.CreateAsync(createRequest, message.UserId);
 
             _logger.LogInformation("User {Email} created successfully in userService with id {userID}",message.Email,message.UserId);
         }catch(Exception ex)
