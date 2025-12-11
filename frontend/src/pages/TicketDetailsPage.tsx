@@ -47,38 +47,33 @@ export default function TicketDetailsPage() {
             return;
         }
 
-        loadTicket();
-        
-        // Załaduj agentów tylko dla administratora
-        if (isAdmin) {
-            loadAgents();
-        }
-    }, [id, user, navigate, isAdmin]);
-
-    const loadAgents = async () =>{
-        try{
-            const response = await userService.getAllUsers();
-            const agentList = response.filter((u : any ) => u.role === 'Agent');
-            setAgents(agentList);
-        }catch(error)
-        {
-            console.error('Failed to load agents: ',error);
-        }
-    }
-
-    const loadTicket = async () => {
-        if (!id) return;
-        try {
-            setLoading(true);
+        const fetchData = async () => {
+            if (!id) return;
             
-            const data = await ticketService.getTicketById(id);
-            setTicket(data);
-        } catch (error) {
-            console.error('Failed to load ticket:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+            try {
+                setLoading(true);
+                const data = await ticketService.getTicketById(id);
+                setTicket(data);
+                
+                // Załaduj agentów tylko dla administratora
+                if (user?.role === 'Administrator') {
+                    try {
+                        const response = await userService.getAllUsers();
+                        const agentList = response.filter((u: any) => u.role === 'Agent');
+                        setAgents(agentList);
+                    } catch (error) {
+                        console.error('Failed to load agents:', error);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load ticket:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [id, navigate]); // Usunięto user i isAdmin z dependencies
 
     const handleAddComment = async () => {
         if (!id || !newComment.trim()) return;
@@ -87,7 +82,10 @@ export default function TicketDetailsPage() {
             setSubmittingComment(true);
             await ticketService.addComment(id, newComment);
             setNewComment('');
-            await loadTicket();  //odsiwezanie zeby zobaczyc nowy ticket
+            
+            // Odśwież ticket
+            const data = await ticketService.getTicketById(id);
+            setTicket(data);
         } catch (error) {
             console.error('Failed to add comment:', error);
         } finally {
@@ -101,7 +99,8 @@ export default function TicketDetailsPage() {
         try {
             setUpdatingStatus(true);
             await ticketService.updateTicketStatus(id, newStatus);
-            await loadTicket();
+            const data = await ticketService.getTicketById(id);
+            setTicket(data);
         } catch (error) {
             console.error('Failed to update status:', error);
         } finally {
@@ -114,7 +113,8 @@ export default function TicketDetailsPage() {
         
         try {
             await ticketService.assignTicket(id, user.id);
-            await loadTicket();
+            const data = await ticketService.getTicketById(id);
+            setTicket(data);
         } catch (error) {
             console.error("Failed to assign ticket:", error);
         }
@@ -125,7 +125,8 @@ export default function TicketDetailsPage() {
         
         try {
             await ticketService.assignTicket(id, ""); // pusty string = unassign
-            await loadTicket();
+            const data = await ticketService.getTicketById(id);
+            setTicket(data);
         } catch (error) {
             console.error("Failed to unassign ticket:", error);
         }
@@ -136,7 +137,8 @@ export default function TicketDetailsPage() {
         
         try {
             await ticketService.updateTicketPriority(id, newPriority);
-            await loadTicket();
+            const data = await ticketService.getTicketById(id);
+            setTicket(data);
         } catch (error) {
             console.error("Failed to change priority:", error);
         }
@@ -147,7 +149,8 @@ export default function TicketDetailsPage() {
         
         try {
             await ticketService.assignTicket(id, agentID);
-            await loadTicket();
+            const data = await ticketService.getTicketById(id);
+            setTicket(data);
         } catch (error) {
             console.error("Failed to assign agent:", error);
         }
@@ -159,7 +162,8 @@ export default function TicketDetailsPage() {
         if (confirm('Czy na pewno chcesz zamknąć to zgłoszenie?')) {
             try {
                 await ticketService.updateTicketStatus(id, 'Closed');
-                await loadTicket();
+                const data = await ticketService.getTicketById(id);
+                setTicket(data);
             } catch (error) {
                 console.error('Failed to close ticket:', error);
             }
