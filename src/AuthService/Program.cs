@@ -12,6 +12,8 @@ using Shared.Constants;
 using Shared.Models;
 using AuthService.Data;
 using AuthService.Services;
+using FluentValidation;
+using AuthService.Behaviors;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -132,6 +134,25 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ISessionService, RedisSessionService>();
 
+
+// mediatR CQRS pattern
+builder.Services.AddMediatR(cfg =>{
+    
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+  
+    cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly);
+
+  
+});
+
+
+
+
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+
+
+
 // Background Services - automatyczne czyszczenie wygasłych sesji
 builder.Services.AddHostedService<AuthService.Workers.SessionCleanupService>();
 
@@ -248,6 +269,44 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
     });
 }
+
+// handler dla exception konwertuje exceptions na JSON responses
+app.UseExceptionHandler(appError =>
+{
+    appError.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        context.Response.ContentType = "application/json";
+
+        var contextFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        if (contextFeature?.Error is FluentValidation.ValidationException validationException)
+        {
+            var errors = validationException.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(e => e.ErrorMessage).ToArray()
+                );
+
+            await context.Response.WriteAsJsonAsync(new
+            {
+                type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                title = "One or more validation errors occurred.",
+                status = 400,
+                errors
+            });
+        }
+        else
+        {
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message = contextFeature?.Error.Message ?? "An error occurred"
+            });
+        }
+    });
+});
+
+app.UseCors("AllowAll");
 
 
 app.UseCors("AllowAll");

@@ -9,6 +9,8 @@ using AuthService.Services;
 using UAParser;
 using Microsoft.AspNetCore.Authorization;
 using System.IdentityModel.Tokens.Jwt;
+using MediatR;
+using AuthService.Features.Auth.Commands.RegisterUser;
 
 namespace AuthService.Controllers;
 
@@ -21,14 +23,15 @@ public class AuthController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<AuthController> _logger;
-
     private readonly ISessionService _sessionService;
+    private readonly IMediator _mediator;
     public AuthController(
         UserManager<ApplicationUser> userManager, 
         SignInManager<ApplicationUser> signInManager,
         ITokenService tokenService, 
         IPublishEndpoint publishEndpoint,
         ISessionService sessionService, 
+        IMediator mediator,
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
@@ -36,6 +39,7 @@ public class AuthController : ControllerBase
         _tokenService = tokenService;
         _publishEndpoint = publishEndpoint;
         _sessionService = sessionService;
+        _mediator = mediator;
         _logger = logger;
     }
 
@@ -49,73 +53,18 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthTokenResponse>> Register([FromBody] RegisterRequest request)
     {
-        _logger.LogInformation("Registration attempt for email: {Email}", request.Email);
-
-        var existingUser = await _userManager.FindByEmailAsync(request.Email);
-
-        if (existingUser != null)
+        var command = new RegisterUserCommand
         {
-            _logger.LogWarning("Registration failed - user already exists: {Email}", request.Email);
-            return BadRequest(new { message = "User with this email already exists" });
-        }
-
-        // Create authentication user (credentials only)
-        var user = new ApplicationUser
-        {
-            UserName = request.Email,
             Email = request.Email,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var result = await _userManager.CreateAsync(user, request.Password);
-
-        if (!result.Succeeded)
-        {
-            _logger.LogWarning("Registration failed for email {Email}: {Errors}", request.Email, string.Join(",", result.Errors.Select(e => e.Description)));
-            return BadRequest(new { message = "Registration failed", errors = result.Errors.Select(e => e.Description) });
-        }
-
-        // Add role from request (Customer, Agent, or Administrator)
-        await _userManager.AddToRoleAsync(user, request.Role);
-
-        _logger.LogInformation("User registered successfully: {Email}", request.Email);
-
-        // Publish UserRegisteredEvent with FULL profile data for UserService
-        var userRegisteredEvent = new UserRegisteredEvent
-        {
-            UserId = Guid.Parse(user.Id),
-            Email = user.Email!,
+            Password = request.Password,
             FirstName = request.FirstName,
             LastName = request.LastName,
             PhoneNumber = request.PhoneNumber,
-            Role = request.Role.ToString()
+            Role = request.Role
         };
 
-        try
-        {
-            await _publishEndpoint.Publish(userRegisteredEvent);
-            _logger.LogInformation("UserRegisteredEvent published for user: {Email}", user.Email);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to publish UserRegisteredEvent, rolling back user creation for: {Email}", user.Email);
-            await _userManager.DeleteAsync(user);
-            return StatusCode(500, new { message = "Registration failed - please try again" });
-        }
-
-        // Auto-login after registration
-        var roles = await _userManager.GetRolesAsync(user);
-        var accessToken = _tokenService.GenerateAccessToken(user, roles);
-        var refreshToken = _tokenService.GenerateRefreshToken();
-        await _tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
-
-        var response = new AuthTokenResponse(
-            Token: accessToken,
-            RefreshToken: refreshToken,
-            ExpiresAt: DateTime.UtcNow.AddMinutes(60)
-        );
-
-        return CreatedAtAction(nameof(Register), response);
+        var response = await _mediator.Send(command);
+        return CreatedAtAction(nameof(Register),response);
     }
     /// <summary>
     /// Login user - verifies credentials and returns JWT token.
