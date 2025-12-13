@@ -5,7 +5,6 @@ import { Label } from "@radix-ui/react-label";
 import {Card, CardContent, CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
 import {Link, useNavigate} from 'react-router-dom';
 import { authService } from '@/services/authService';
-import { userService } from '@/services/userService';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import type { PasswordRequirements } from '@/types/auth.types';
 

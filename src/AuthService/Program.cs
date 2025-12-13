@@ -122,7 +122,18 @@ builder.Services.AddMassTransit(x =>
 
 
 
+// Redis Configuration for distributed caching and session management
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "AuthService:";
+});
+
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ISessionService, RedisSessionService>();
+
+// Background Services - automatyczne czyszczenie wygasłych sesji
+builder.Services.AddHostedService<AuthService.Workers.SessionCleanupService>();
 
 // Controllers
 builder.Services.AddControllers();
@@ -247,6 +258,7 @@ app.UseCors("AllowAll");
 // app.UseHttpsRedirection(); // USUNIĘTE
 
 app.UseAuthentication();
+app.UseMiddleware<AuthService.Middleware.JwtBlacklistMiddleware>();
 app.UseAuthorization();
 
 

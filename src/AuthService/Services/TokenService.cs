@@ -91,4 +91,37 @@ public class TokenService : ITokenService
             await _userManager.UpdateAsync(user);
         }
     }
+
+    public async Task<string> GenerateTokenWithSessionAsync(ApplicationUser user, string sessionId)
+    {
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email,user.Email!),
+            new Claim(JwtRegisteredClaimNames.Jti,sessionId),
+            new Claim(JwtRegisteredClaimNames.Iat,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),ClaimValueTypes.Integer64)
+        };
+
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role,role)));
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var credentials = new SigningCredentials(key,SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
+            signingCredentials: credentials
+        );
+
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+        _logger.LogInformation("JWT token generated for user {userID} with SessionId {sessionId}", user.Id, sessionId);
+
+        return tokenString;
+    }
 }

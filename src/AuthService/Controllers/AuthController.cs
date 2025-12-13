@@ -6,7 +6,9 @@ using Shared.Models;
 using Shared.Events;
 using AuthService.Data;
 using AuthService.Services;
-
+using UAParser;
+using Microsoft.AspNetCore.Authorization;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace AuthService.Controllers;
 
@@ -20,17 +22,20 @@ public class AuthController : ControllerBase
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<AuthController> _logger;
 
+    private readonly ISessionService _sessionService;
     public AuthController(
         UserManager<ApplicationUser> userManager, 
         SignInManager<ApplicationUser> signInManager,
         ITokenService tokenService, 
-        IPublishEndpoint publishEndpoint, 
+        IPublishEndpoint publishEndpoint,
+        ISessionService sessionService, 
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _tokenService = tokenService;
         _publishEndpoint = publishEndpoint;
+        _sessionService = sessionService;
         _logger = logger;
     }
 
@@ -138,31 +143,24 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid email or password" });
         }
 
-        _logger.LogInformation("User logged in successfully: {Email}", request.Email);
-        
-        // Generate JWT tokens
-        var roles = await _userManager.GetRolesAsync(user);
-        var accessToken = _tokenService.GenerateAccessToken(user, roles);
+        var deviceInfo = GetDeviceInfo(Request.Headers["User-Agent"].ToString());
+
+        var ipAddress = GetClientIpAddress();
+
+        var expiresAt = DateTime.UtcNow.AddDays(7);
+
+        var sessionId = await _sessionService.CreateSessionAsync(
+            userId: Guid.Parse(user.Id),
+            deviceInfo: deviceInfo,
+            ipAddress: ipAddress,
+            expiresAt: expiresAt
+        );
+
+        var accessToken = await _tokenService.GenerateTokenWithSessionAsync(user, sessionId);
         var refreshToken = _tokenService.GenerateRefreshToken();
         await _tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
 
-        // Publish login event (non-critical, fire-and-forget)
-        try
-        {
-            var loginEvent = new UserLoggedInEvent
-            {
-                UserId = Guid.Parse(user.Id),
-                Email = user.Email!,
-                Timestamp = DateTime.UtcNow
-            };
-            
-            await _publishEndpoint.Publish(loginEvent);
-            _logger.LogInformation("Published UserLoggedIn event for {Email}", user.Email);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to publish login event (non-critical)");
-        }
+        _logger.LogInformation("User {userId} logged in successfully from {ipAddress} {DeviceInfo}", user.Id, ipAddress, deviceInfo);
 
         var response = new AuthTokenResponse(
             Token: accessToken,
@@ -172,18 +170,89 @@ public class AuthController : ControllerBase
 
         return Ok(response);
     }
-    //odswiezanie tokenu 
-
+    
+    /// <summary>
+    /// Refresh access token using refresh token
+    /// </summary>
     [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Logout()
     {
-        _logger.LogInformation("User logout");
+        try
+        {
+            var sessionId = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
 
-        await _signInManager.SignOutAsync();
+        if(string.IsNullOrEmpty(sessionId))
+        {
+            _logger.LogWarning("Logout failed - no session ID in token");
+            return BadRequest(new {message = "Invalid token - no session ID"});
+        }    
 
-        return Ok(new { message = "Logged out successfully" });
+        await _sessionService.RevokeSessionAsync(sessionId);
+
+        _logger.LogInformation("User logged out successfully. SessionId: {sessionID}",sessionId);
+
+        return Ok(new {message = "Logged out successfully"});
+        }catch(Exception ex)
+        {
+            _logger.LogError(ex, "Error during logout");
+            return StatusCode(500,new {message = "An error occured during logout"});
+        }
     }
+
+
+    [HttpPost("logout-all")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> LogoutAll()
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if(string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Logout All failed - no user ID in token");
+                return BadRequest(new {message = "Invalid token - no user ID"});
+            }
+
+            await _sessionService.RevokeAllUserSessionsAsync(Guid.Parse(userId));
+            _logger.LogInformation("User {userId} logged out from all devices",userId);
+            return Ok(new {message = "logged out from all devices successfully"});
+        }catch(Exception ex)
+        {
+            _logger.LogError(ex, "Error during logout-all");
+            return StatusCode(500,new {message = "An error occured during logout"});
+        }
+    }
+
+    [HttpGet("sessions")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IEnumerable<UserSession>>> GetActiveSessions()
+    {
+        try 
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if(string.IsNullOrEmpty(userId))
+            {
+                return BadRequest(new {message = "Invalid token - no user ID"});
+            }
+            var sessions = await _sessionService.GetActiveSessionsAsync(Guid.Parse(userId));
+
+            return Ok(sessions);
+        }catch(Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving active sessions");
+            return StatusCode(500,new {message = "An error occured retrieving sessions"});
+        }
+    }
+
 
     /// <summary>
     /// Pobiera wymogi haseł dla walidacji po stronie frontendu
@@ -204,5 +273,88 @@ public class AuthController : ControllerBase
         };
 
         return Ok(requirements);
+    }
+
+
+    private string GetDeviceInfo(string userAgent)
+    {
+        if(string.IsNullOrEmpty(userAgent))
+        {
+            return "Unknown Device";
+        }
+        try
+        {
+            var parser = Parser.GetDefault();
+            var clientInfo = parser.Parse(userAgent);
+
+            var browser = clientInfo.UA.Family ?? "Unknown Browser";
+            var browserVersion = !string.IsNullOrEmpty(clientInfo.UA.Major) ? 
+            $"{clientInfo.UA.Major}.{clientInfo.UA.Minor}" : "";
+
+            var os = clientInfo.OS.Family ?? "Unknown OS";
+            var osVersion = !string.IsNullOrEmpty(clientInfo.OS.Major)
+            ? $"{clientInfo.OS.Major}" : "";
+
+            var device = clientInfo.Device.Family ?? "";
+
+            var result = $"{browser}";
+
+            if(!string.IsNullOrEmpty(browserVersion))
+            {
+                result += $" {browserVersion}";
+            }
+            result += $" on {os}";
+
+            if(!string.IsNullOrEmpty(osVersion))
+            {
+                result += $" {osVersion}";
+            }
+
+            if(!string.IsNullOrEmpty(device) && device != "Other")
+            {
+                result += $" ({device})";
+            }
+            return result;
+        }catch(Exception ex)
+        {
+            _logger.LogWarning(ex,"Failed to parse User-Agent: {userAgent}",userAgent);
+            return "Unknown Device";
+        }
+    }
+
+
+    private string GetClientIpAddress()
+    {
+        var cloudflareIp = Request.Headers["CF-Connecting-IP"].FirstOrDefault();
+        if(!string.IsNullOrEmpty(cloudflareIp))
+        {
+            _logger.LogDebug("IP from CloudFlare header: {cloudflareIP}",cloudflareIp);
+            return cloudflareIp.Trim();
+        }
+
+        var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if(!string.IsNullOrEmpty(forwardedFor))
+        {
+            var clientIp = forwardedFor.Split(",")[0].Trim();
+            _logger.LogDebug("IP from X-Forwarded-For header: {IP}",clientIp);
+            return clientIp;
+        }
+
+        var realIp = Request.Headers["X-Real-IP"].FirstOrDefault();
+        if(!string.IsNullOrEmpty(realIp))
+        {
+            _logger.LogDebug("IP from X-Real-IP header: {IP}",realIp);
+            return realIp;
+        }
+
+        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if(!string.IsNullOrEmpty(remoteIp))
+        {
+            _logger.LogDebug("Ip address from RemoteIpAddress: {IP}",remoteIp);
+            return remoteIp;
+        }
+
+        _logger.LogWarning("Could not determine client IP address");
+        return "Unknown IP";
     }
 }

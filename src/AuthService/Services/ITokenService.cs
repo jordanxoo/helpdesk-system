@@ -9,4 +9,5 @@ public interface ITokenService
     Task<bool> ValidateRefreshTokenAsync(string UserId, string refreshToken);
     public  Task SaveRefreshTokenAsync(string userId, string refreshToken);
     
+    Task<string> GenerateTokenWithSessionAsync(ApplicationUser user, string sessionId);
 }
