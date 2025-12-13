@@ -264,6 +264,17 @@ public class TicketsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Pobiera statystyki zgłoszeń
+    /// </summary>
+    [HttpGet("statistics")]
+    [Authorize]
+    [ProducesResponseType(typeof(TicketStatisticsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<TicketStatisticsDto>> GetStatistics()
+    {
+        var stats = await _ticketService.GetStatisticsAsync();
+        return Ok(stats);
+    }
 
 }
 

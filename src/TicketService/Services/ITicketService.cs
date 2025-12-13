@@ -25,4 +25,7 @@ public interface ITicketService
 
     //dodawanie attachmentow do ticketow
     Task<Shared.Models.TicketAttachment> AddAttachmentAsync(Guid ticketID, Guid userID, IFormFile file);
+    
+    // Statystyki
+    Task<TicketStatisticsDto> GetStatisticsAsync();
 }

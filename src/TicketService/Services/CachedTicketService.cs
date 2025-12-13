@@ -135,4 +135,9 @@ public class CachedTicketService : ITicketService
 
     }
 
+    public Task<TicketStatisticsDto> GetStatisticsAsync()
+    {
+        return _inner.GetStatisticsAsync();
+    }
+
 }

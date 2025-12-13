@@ -45,4 +45,9 @@ export const ticketService = {
     async deleteTicket(id: string): Promise<void> {
         await api.delete(`/api/tickets/${id}`);
     },
+
+    async getStatistics(): Promise<{byStatus: Record<string, number>, byPriority: Record<string, number>, total: number, unassigned: number}> {
+        const response = await api.get('/api/tickets/statistics');
+        return response.data;
+    },
 };

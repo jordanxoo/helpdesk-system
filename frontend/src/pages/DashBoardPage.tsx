@@ -1,21 +1,46 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { mockStats, mockTickets } from '@/data/mockData';
+import { mockTickets } from '@/data/mockData';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '@/components/ui/Layout';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { ticketService } from '@/services/ticketService';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const role = user.role as 'Customer' | 'Agent' | 'Administrator';
+    
+    const [stats, setStats] = useState({
+        total: 0,
+        open: 0,
+        inProgress: 0,
+        resolved: 0,
+    });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (role === 'Administrator') {
-            navigate('/admin');
-        }
-    }, [role, navigate]);
+        const loadStatistics = async () => {
+            try {
+                setLoading(true);
+                const data = await ticketService.getStatistics();
+                setStats({
+                    total: data.total,
+                    open: (data.byStatus['New'] || 0) + (data.byStatus['Open'] || 0),
+                    inProgress: data.byStatus['InProgress'] || 0,
+                    resolved: data.byStatus['Resolved'] || 0,
+                });
+            } catch (error) {
+                console.error('Failed to load statistics:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadStatistics();
+    }, []);
 
     const getStatusVariant = (status: string) => {
         switch (status) {
@@ -47,32 +72,38 @@ export default function DashboardPage() {
 
     return (
         <Layout currentPage="/dashboard">
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'>
-                <Card>
-                    <CardHeader className='pb-3'>
-                        <CardDescription>Wszystkie zgłoszenia</CardDescription>
-                        <CardTitle className='text-3xl'>{mockStats.totalTickets}</CardTitle>
-                    </CardHeader>
-                </Card>
-                <Card>
-                    <CardHeader className='pb-3'>
-                        <CardDescription>Otwarte</CardDescription>
-                        <CardTitle className='text-3xl text-blue-600'>{mockStats.openTickets}</CardTitle>
-                    </CardHeader>
-                </Card>
-                <Card>
-                    <CardHeader className='pb-3'>
-                        <CardDescription>W trakcie</CardDescription>
-                        <CardTitle className='text-3xl text-orange-600'>{mockStats.inProgressTickets}</CardTitle>
-                    </CardHeader>
-                </Card>
-                <Card>
-                    <CardHeader className='pb-3'>
-                        <CardDescription>Rozwiązane</CardDescription>
-                        <CardTitle className='text-3xl text-green-600'>{mockStats.resolvedTickets}</CardTitle>
-                    </CardHeader>
-                </Card>
-            </div>
+            {loading ? (
+                <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'>
+                    <Card>
+                        <CardHeader className='pb-3'>
+                            <CardDescription>Wszystkie zgłoszenia</CardDescription>
+                            <CardTitle className='text-3xl'>{stats.total}</CardTitle>
+                        </CardHeader>
+                    </Card>
+                    <Card>
+                        <CardHeader className='pb-3'>
+                            <CardDescription>Otwarte</CardDescription>
+                            <CardTitle className='text-3xl text-blue-600'>{stats.open}</CardTitle>
+                        </CardHeader>
+                    </Card>
+                    <Card>
+                        <CardHeader className='pb-3'>
+                            <CardDescription>W trakcie</CardDescription>
+                            <CardTitle className='text-3xl text-orange-600'>{stats.inProgress}</CardTitle>
+                        </CardHeader>
+                    </Card>
+                    <Card>
+                        <CardHeader className='pb-3'>
+                            <CardDescription>Rozwiązane</CardDescription>
+                            <CardTitle className='text-3xl text-green-600'>{stats.resolved}</CardTitle>
+                        </CardHeader>
+                    </Card>
+                </div>
+            )}
 
             <Card>
                 <CardHeader>

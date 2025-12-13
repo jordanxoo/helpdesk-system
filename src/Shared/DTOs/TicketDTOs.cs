@@ -98,3 +98,10 @@ public record TicketAttachmentDto(
     DateTime UploadedAt
 );
 
+public record TicketStatisticsDto(
+    Dictionary<string, int> ByStatus,
+    Dictionary<string, int> ByPriority,
+    int Total,
+    int Unassigned
+);
+

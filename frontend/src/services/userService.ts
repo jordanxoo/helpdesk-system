@@ -4,8 +4,8 @@ import type {User, CreateUserRequest, UpdateUserRequest, UpdateProfileRequest} f
 
 export const userService = {
     async getAllUsers(): Promise<User[]> {
-    const response = await api.get<User[]>('/api/users');
-    return response.data;
+    const response = await api.get<{users: User[], totalCount: number, page: number, pageSize: number}>('/api/users?pageSize=1000');
+    return response.data.users;
     },
 
     async getUserById(id: string): Promise<User>{

@@ -654,5 +654,20 @@ public class TicketServiceImpl : ITicketService
             })]
         );
     }
+
+    public async Task<TicketStatisticsDto> GetStatisticsAsync()
+    {
+        var byStatus = await _repository.GetCountByStatusAsync();
+        var byPriority = await _repository.GetCountByPriorityAsync();
+        var total = byStatus.Values.Sum();
+        var unassigned = await _repository.GetUnassignedCountAsync();
+
+        return new TicketStatisticsDto(
+            ByStatus: byStatus,
+            ByPriority: byPriority,
+            Total: total,
+            Unassigned: unassigned
+        );
+    }
 }
     
