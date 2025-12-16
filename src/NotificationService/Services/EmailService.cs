@@ -146,4 +146,17 @@ public class EmailService : IEmailService
 
         await SendEmailAsync(email, subject, body);
     }
+
+    public async Task SendTicketStatusChangedEmailAsync(string email,string ticketId, string Title)
+    {
+        var subject = Title;
+        var body = $@"
+        <h2>Zmiana statusu zgłoszenia</h2>
+        <p>Zauważono zmianę statusu złgoszenia {ticketId} dla użytkownika {email} w systemie Helpdesk.</p>
+        <p>Data: {DateTime.UtcNow} (UTC)</p>
+        <p>Miłego dnia, system Helpdesk.</p>
+        ";
+
+        await SendEmailAsync(email, subject, body);
+    }
 }

@@ -37,4 +37,5 @@ public interface IEmailService
     Task SendWelcomeEmailAsync(string email, string firstName);
     
     Task SendLoginEmailAsync(string email);
+    Task SendTicketStatusChangedEmailAsync(string email,string ticketId,string Title);
 }

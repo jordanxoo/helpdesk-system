@@ -196,4 +196,27 @@ public class TicketRepository : ITicketRepository
 
         return await query.OrderBy(c => c.CreatedAt).ToListAsync();
     }
+
+    public async Task<Dictionary<string, int>> GetCountByStatusAsync()
+    {
+        return await _context.Tickets
+            .GroupBy(t => t.Status.ToString())
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count);
+    }
+
+    public async Task<Dictionary<string, int>> GetCountByPriorityAsync()
+    {
+        return await _context.Tickets
+            .GroupBy(t => t.Priority.ToString())
+            .Select(g => new { Priority = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Priority, x => x.Count);
+    }
+
+    public async Task<int> GetUnassignedCountAsync()
+    {
+        return await _context.Tickets
+            .Where(t => t.AssignedAgentId == null)
+            .CountAsync();
+    }
 }

@@ -33,4 +33,9 @@ public interface ITicketRepository
 
     Task<TicketComment> AddCommentAsync(TicketComment comment);
     Task<List<TicketComment>> GetCommentsAsync(Guid ticketId, bool includeInternal = false);
+    
+    // Statistics methods
+    Task<Dictionary<string, int>> GetCountByStatusAsync();
+    Task<Dictionary<string, int>> GetCountByPriorityAsync();
+    Task<int> GetUnassignedCountAsync();
 }

@@ -188,6 +188,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Redis: "helpdesk-redis:6379"
+      ServiceUrls__UserService: "http://helpdesk-users:8080"
       MessagingSettings__HostName: helpdesk-rabbitmq
       MessagingSettings__UserName: ${RABBITMQ_USER}
       MessagingSettings__Password: ${RABBITMQ_PASSWORD}
@@ -197,6 +198,9 @@ services:
       EmailSettings__SenderEmail: noreply@helpdesk.com
       EmailSettings__SenderName: "Helpdesk System"
       EmailSettings__SmtpPassword: ""
+      JwtSettings__SecretKey: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
     ports:
       - "${NOTIFICATION_SERVICE_PORT}:8080"
     restart: on-failure
@@ -206,6 +210,8 @@ services:
       mailpit:
         condition: service_started
       redis:
+        condition: service_started
+      user-service:
         condition: service_started
     networks:
       - helpdesk-network
