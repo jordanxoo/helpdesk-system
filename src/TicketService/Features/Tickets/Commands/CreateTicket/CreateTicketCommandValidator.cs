@@ -23,7 +23,8 @@ public class CreateTicketCommandValidatior : AbstractValidator<CreateTicketComma
         .NotEmpty().IsEnumName(typeof(TicketPriority), caseSensitive: false)
         .WithMessage("Nieprawidłowy priorytet");
 
-        RuleFor(x => x.Category).IsEnumName(typeof(TicketCategory))
+        RuleFor(x => x.Category)
+        .IsEnumName(typeof(TicketCategory), caseSensitive: false)
         .WithMessage("Nieprawidłowa kategoria");
 
         RuleFor(x => x)

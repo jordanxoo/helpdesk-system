@@ -10,6 +10,12 @@ public record TicketCreatedEvent : BaseEvent
     public Guid CustomerId { get; init; }
 }
 
+public record TicketClosedEvent : BaseEvent
+{
+    public Guid TicketId{get;init;}
+    public Guid CustomerId {get;init;}
+}
+
 /// <summary>
 /// Event published when a ticket is assigned to an agent.
 /// NotificationService should fetch agent details from UserService using AgentId.

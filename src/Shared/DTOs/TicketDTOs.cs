@@ -13,6 +13,7 @@ public record CreateTicketRequest(
 public record UpdateTicketRequest(
     string? Title,
     string? Description,
+    string? Category,
     string? Status,
     string? Priority,
     Guid? AssignedAgentId

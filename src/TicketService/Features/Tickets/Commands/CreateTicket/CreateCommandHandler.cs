@@ -61,50 +61,42 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand,Ti
                 _logger.LogError(ex, "Failed to fetch ogranization for customer {CustomerId}",actualCustomerId);
             }
         }
-        using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
-        try
+
+        var ticket = new Ticket
         {
-            var ticket = new Ticket
-            {
-                CustomerId = actualCustomerId,
-                Title = command.Title,
-                Description = command.Description,
-                Priority = priority,
-                Category = category,
-                Status = TicketStatus.New,
-                OrganizationId = organizationId,
-                CreatedAt = DateTime.UtcNow
-            };
-            var createdTicket = await _repository.CreateAsync(ticket);
+            CustomerId = actualCustomerId,
+            Title = command.Title,
+            Description = command.Description,
+            Priority = priority,
+            Category = category,
+            Status = TicketStatus.New,
+            OrganizationId = organizationId,
+            CreatedAt = DateTime.UtcNow
+        };
+        var createdTicket = await _repository.CreateAsync(ticket);
 
-            _dbContext.TicketAuditLogs.Add(new TicketAuditLog
-            {
-                Id = Guid.NewGuid(),
-                TicketId = createdTicket.Id,
-                UserId = command.UserId,
-                Action = AuditAction.Created,
-                Description = $"Ticket created: {createdTicket.Title}",
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await _publishEndpoint.Publish(new TicketCreatedEvent
-            {
-                TicketId = createdTicket.Id,
-                CustomerId = createdTicket.CustomerId,
-                Timestamp = DateTime.UtcNow
-            },ct);
-
-            await _dbContext.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
-
-            _logger.LogInformation("Ticket created successfully: {TicketId}",createdTicket.Id);
-
-            return MapToDto(createdTicket);
-        }catch
+        _dbContext.TicketAuditLogs.Add(new TicketAuditLog
         {
-            await transaction.RollbackAsync(ct);
-            throw;
-        }
+            Id = Guid.NewGuid(),
+            TicketId = createdTicket.Id,
+            UserId = command.UserId,
+            Action = AuditAction.Created,
+            Description = $"Ticket created: {createdTicket.Title}",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _publishEndpoint.Publish(new TicketCreatedEvent
+        {
+            TicketId = createdTicket.Id,
+            CustomerId = createdTicket.CustomerId,
+            Timestamp = DateTime.UtcNow
+        },ct);
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Ticket created successfully: {TicketId}",createdTicket.Id);
+
+        return MapToDto(createdTicket);
     }
 
 

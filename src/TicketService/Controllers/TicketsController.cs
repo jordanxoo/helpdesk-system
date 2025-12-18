@@ -6,7 +6,9 @@ using TicketService.Services;
 using System.Security.Claims;
 using MediatR;
 using TicketService.Features.Tickets.Commands.CreateTicket;
-
+using TicketService.Features.Tickets.Commands.UpdateTicket;
+using TicketService.Features.Tickets.Commands.AssignToAgent;
+using TicketService.Features.Tickets.Commands.ChangeStatus;
 
 namespace TicketService.Controllers;
 
@@ -154,23 +156,36 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<TicketDto>> Update(Guid id, [FromBody] UpdateTicketRequest request)
     {
         
-            var ticket = await _ticketService.UpdateAsync(id, request);
+            var command = new UpdateTicketCommand
+            {
+                TicketId = id,
+                Title = request.Title,
+                Description = request.Description,
+                Priority = request.Priority,
+                Category = request.Category
+            };
+            var ticket = await _mediator.Send(command);
             return Ok(ticket);
     }
 
-    /// <summary>
-    /// Przypisuje ticket do agenta
-    /// </summary>
-    [HttpPost("{id}/assign/{agentId}")]
-    [Authorize(Roles = "Agent,Administrator")]
-    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TicketDto>> AssignToAgent(Guid id, Guid agentId)
+  /// <summary>
+/// Przypisuje ticket do agenta
+/// </summary>
+[HttpPost("{id}/assign/{agentId}")]
+[Authorize(Roles = "Agent,Administrator")]
+[ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+public async Task<ActionResult<TicketDto>> AssignToAgent(Guid id, Guid agentId)
+{
+    var command = new AssignToAgentCommand
     {
-            var ticket = await _ticketService.AssignToAgentAsync(id, agentId);
-            return Ok(ticket);
-      
-    }
+        TicketId = id,
+        AgentId = agentId
+    };
+
+    var ticket = await _mediator.Send(command);
+    return Ok(ticket);
+}
 
     /// <summary>
     /// Zmienia status ticketa
@@ -184,8 +199,14 @@ public class TicketsController : ControllerBase
         Guid id, 
         [FromBody] ChangeStatusRequest request)
     {
-          var ticket = await _ticketService.ChangeStatusAsync(id, request.NewStatus);
-            return Ok(ticket);
+        var command = new ChangeStatusCommand
+        {
+            TicketId = id,
+            NewStatus = request.NewStatus
+        };
+
+        var ticket = await _mediator.Send(command);
+        return Ok(ticket);
     }
 
     /// <summary>

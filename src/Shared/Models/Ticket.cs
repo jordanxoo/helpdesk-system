@@ -94,7 +94,8 @@ public enum TicketStatus
     InProgress,
     Pending,
     Resolved,
-    Closed
+    Closed,
+    Assigned
 }
 
 public enum TicketPriority
