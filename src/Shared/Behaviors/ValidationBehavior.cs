@@ -3,7 +3,7 @@ using MediatR;
 
 
 
-namespace AuthService.Behaviors;
+namespace Shared.Behaviors;
 
 
 public class ValidationBehavior<TRequest,TResponse> : IPipelineBehavior<TRequest,TResponse> where TRequest : notnull

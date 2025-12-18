@@ -4,6 +4,9 @@ using Shared.Constants;
 using Shared.DTOs;
 using TicketService.Services;
 using System.Security.Claims;
+using MediatR;
+using TicketService.Features.Tickets.Commands.CreateTicket;
+
 
 namespace TicketService.Controllers;
 
@@ -14,11 +17,13 @@ public class TicketsController : ControllerBase
 {
     private readonly ITicketService _ticketService;
     private readonly ILogger<TicketsController> _logger;
+    private readonly IMediator _mediator;
 
-    public TicketsController(ITicketService ticketService, ILogger<TicketsController> logger)
+    public TicketsController(ITicketService ticketService, ILogger<TicketsController> logger, IMediator mediator)
     {
         _ticketService = ticketService;
         _logger = logger;
+        _mediator = mediator;
     }
 
     /// <summary>
@@ -121,11 +126,21 @@ public class TicketsController : ControllerBase
             return Unauthorized(new { message = "Invalid user ID" });
         }
 
-            // Customer creates ticket for themselves
-            // Agent/Admin can create ticket for a customer (requires CustomerId in request)
-            var ticket = await _ticketService.CreateAsync(userId, userRole, request);
-            return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
-        
+            var command = new CreateTicketCommand
+            {
+                Title = request.Title,
+                Description = request.Description,
+                Priority = request.Priority,
+                Category = request.Category,
+                CustomerId = request.CustomerId,
+                OrganizationId = request.OrganizationId,
+                UserRole = userRole ?? "Customer",
+                UserId = userId
+            };
+
+            var ticket = await _mediator.Send(command);
+            
+            return CreatedAtAction(nameof(GetById), new {id = ticket.Id},ticket);
         
     }
 

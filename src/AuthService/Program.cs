@@ -13,7 +13,7 @@ using Shared.Models;
 using AuthService.Data;
 using AuthService.Services;
 using FluentValidation;
-using AuthService.Behaviors;
+using Shared.Behaviors;
 
 var builder = WebApplication.CreateBuilder(args);
 

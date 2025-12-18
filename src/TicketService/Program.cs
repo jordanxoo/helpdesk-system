@@ -19,7 +19,8 @@ using TicketService.Middleware;
 using MassTransit;
 using Amazon.S3;
 using TicketService.Configuration;
-
+using Shared.Behaviors;
+using MediatR;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -61,6 +62,19 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateTicketRequestValidato
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails(); // standardowy format bledow
+
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly);
+
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+
+
+
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+
 
 
 
