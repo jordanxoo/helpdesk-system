@@ -40,7 +40,7 @@ public record UserDto(
     string Email,
     string FirstName,
     string LastName,
-    string FullName,
+    string? FullName,
     string PhoneNumber,
     string Role,
     Guid? OrganizationId,

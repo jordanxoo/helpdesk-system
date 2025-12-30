@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Shared.Constants;
 using Shared.DTOs;
 using UserService.Services;
-
+using MediatR;
+using UserService.Features.Users.Commands.CreateUser;
+using UserService.Features.Users.Commands.UpdateUser;
 namespace UserService.Controllers;
 
 [ApiController]
@@ -14,12 +16,15 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly ILogger<UsersController> _logger;
+    private readonly IMediator _mediator;
 
-    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    public UsersController(IMediator mediator,IUserService userService, ILogger<UsersController> logger)
     {
         _userService = userService;
         _logger = logger;
+        _mediator = mediator;
     }
+
 
     [HttpGet]
     [Authorize(Roles = "Agent,Administrator")]
@@ -92,26 +97,27 @@ public class UsersController : ControllerBase
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest request)
-    {
-        _logger.LogInformation("POST /api/users - Email: {Email}", request.Email);
+    [HttpPost]
+[Authorize(Roles = UserRoles.Administrator)]
+[ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status409Conflict)]
+public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest request)
+{
+    _logger.LogInformation("POST /api/users - Email: {Email}", request.Email);
 
-        try
-        {
-            var user = await _userService.CreateAsync(request);
-            return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Email already exists: {Email}", request.Email);
-            return Conflict(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Invalid request data");
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+    var command = new CreateUserCommand
+    {
+        Email = request.Email,
+        FirstName = request.FirstName,
+        LastName = request.LastName,
+        PhoneNumber = request.PhoneNumber,
+        Role = Enum.Parse<Shared.Models.UserRole>(request.Role)
+    };
+
+    var user = await _mediator.Send(command);
+    return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+}
 
     /// <summary>
     /// Update user data - UserService is the OWNER of all profile and business data.
@@ -127,22 +133,20 @@ public class UsersController : ControllerBase
     {
         _logger.LogInformation("PUT /api/users/{Id} - updating user data", id);
 
-        try
+        var command = new UpdateUserCommand
         {
-            var user = await _userService.UpdateAsync(id, request);
-            return Ok(user);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning(ex, "User not found: {Id}", id);
-            return NotFound(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Invalid request data");
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+            UserId = id,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            PhoneNumber = request.PhoneNumber,
+            Role = request.Role,
+            OrganizationId = request.OrganizationId,
+            IsActive = request.IsActive
+        };
+
+        var user = await _mediator.Send(command);
+        return Ok(user);
+}
 
     [HttpDelete("{id}")]
     [Authorize(Roles = UserRoles.Administrator)]

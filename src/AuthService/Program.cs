@@ -1,19 +1,20 @@
 using System.Text;
 using System.Text.Json;
+using FluentValidation;
 using MassTransit;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Behaviors;
 using Shared.Configuration;
 using Shared.Constants;
 using Shared.Models;
 using AuthService.Data;
 using AuthService.Services;
-using FluentValidation;
-using Shared.Behaviors;
 
 var builder = WebApplication.CreateBuilder(args);
 

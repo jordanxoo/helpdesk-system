@@ -1,11 +1,14 @@
 using System.Text;
 using System.Text.Json;
+using FluentValidation;
 using MassTransit;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Behaviors;
 using Shared.Configuration;
 using Shared.Messaging;
 using UserService.Data;
@@ -106,6 +109,12 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 });
+
+builder.Services.AddMediatR(cfg =>{
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+    cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly);
+});
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
