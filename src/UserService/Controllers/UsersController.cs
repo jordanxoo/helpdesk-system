@@ -63,13 +63,6 @@ public class UsersController : ControllerBase
         _logger.LogInformation("GET /api/users/{Id}", id);
 
         var user = await _userService.GetByIdAsync(id);
-
-        if (user == null)
-        {
-            _logger.LogWarning("User not found: {Id}", id);
-            return NotFound(new { message = $"User with id {id} not found" });
-        }
-
         return Ok(user);
     }
 
@@ -82,13 +75,6 @@ public class UsersController : ControllerBase
         _logger.LogInformation("GET /api/users/by-email/{Email}", email);
 
         var user = await _userService.GetByEmailAsync(email);
-
-        if (user == null)
-        {
-            _logger.LogWarning("User not found by email: {Email}", email);
-            return NotFound(new { message = $"User with email {email} not found" });
-        }
-
         return Ok(user);
     }
 
@@ -156,16 +142,8 @@ public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest req
     {
         _logger.LogInformation("DELETE /api/users/{Id}", id);
 
-        try
-        {
-            await _userService.DeleteAsync(id);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning(ex, "User not found: {Id}", id);
-            return NotFound(new { message = ex.Message });
-        }
+        await _userService.DeleteAsync(id);
+        return NoContent();
     }
 
     [HttpGet("me")]
@@ -201,16 +179,8 @@ public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest req
     {
         _logger.LogInformation("PUT /api/users/{Id}/organization - OrganizationId: {OrganizationId}", id, request.OrganizationId);
 
-        try
-        {
-            var updatedUser = await _userService.AssignOrganizationAsync(id, request.OrganizationId);
-            return Ok(updatedUser);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning(ex, "User not found: {Id}", id);
-            return NotFound(new { message = ex.Message });
-        }
+        var updatedUser = await _userService.AssignOrganizationAsync(id, request.OrganizationId);
+        return Ok(updatedUser);
     }
 
     [HttpHead("{id}")]

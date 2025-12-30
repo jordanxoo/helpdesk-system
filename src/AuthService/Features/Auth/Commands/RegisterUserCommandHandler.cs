@@ -5,6 +5,7 @@ using AuthService.Data;
 using AuthService.Services;
 using Shared.DTOs;
 using Shared.Events;
+using Shared.Exceptions;
 
 
 
@@ -50,7 +51,7 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand,Au
 
         if(exsistingUser != null)
         {
-            throw new InvalidOperationException("User with this email already exsists");
+            throw new ConflictException("User", "email", command.Email);
         }
 
         var user = new ApplicationUser
@@ -63,8 +64,11 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand,Au
         var result = await _userManager.CreateAsync(user,command.Password);
         if(!result.Succeeded)
         {
-            var errors = string.Join(",", result.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Registration failed: {errors}");
+            var errors = result.Errors.ToDictionary(
+                e => e.Code,
+                e => new[] { e.Description }
+            );
+            throw new BadRequestException("Registration failed", errors);
         }
 
         await _userManager.AddToRoleAsync(user,command.Role);

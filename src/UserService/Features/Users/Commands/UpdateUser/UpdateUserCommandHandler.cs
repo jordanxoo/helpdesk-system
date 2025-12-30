@@ -2,6 +2,7 @@ using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.DTOs;
+using Shared.Exceptions;
 using UserService.Data;
 
 
@@ -28,7 +29,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand,UserDt
 
         if(user == null)
         {
-            throw new KeyNotFoundException($"User {command.UserId} not found");
+            throw new NotFoundException("User", command.UserId);
         }
 
 

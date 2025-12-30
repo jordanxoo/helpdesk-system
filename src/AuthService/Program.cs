@@ -158,6 +158,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddHostedService<AuthService.Workers.SessionCleanupService>();
 
 // Controllers
+// Add exception handling
+builder.Services.AddExceptionHandler<Shared.Exceptions.GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 builder.Services.AddControllers();
 
 // Swagger/OpenAPI
@@ -271,51 +275,14 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// handler dla exception konwertuje exceptions na JSON responses
-app.UseExceptionHandler(appError =>
-{
-    appError.Run(async context =>
-    {
-        context.Response.StatusCode = StatusCodes.Status400BadRequest;
-        context.Response.ContentType = "application/json";
-
-        var contextFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
-        if (contextFeature?.Error is FluentValidation.ValidationException validationException)
-        {
-            var errors = validationException.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.Select(e => e.ErrorMessage).ToArray()
-                );
-
-            await context.Response.WriteAsJsonAsync(new
-            {
-                type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                title = "One or more validation errors occurred.",
-                status = 400,
-                errors
-            });
-        }
-        else
-        {
-            await context.Response.WriteAsJsonAsync(new
-            {
-                message = contextFeature?.Error.Message ?? "An error occurred"
-            });
-        }
-    });
-});
-
-app.UseCors("AllowAll");
-
-
 app.UseCors("AllowAll");
 
 // HTTPS Redirection - nie potrzebne, bo:
 // - W Development/Docker: używamy HTTP
 // - W Production/AWS: ALB robi SSL termination, kontenery dostają HTTP
 // app.UseHttpsRedirection(); // USUNIĘTE
+
+app.UseExceptionHandler();
 
 app.UseAuthentication();
 app.UseMiddleware<AuthService.Middleware.JwtBlacklistMiddleware>();

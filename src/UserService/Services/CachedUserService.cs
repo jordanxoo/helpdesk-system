@@ -25,7 +25,7 @@ public class CachedUserService : IUserService
         _logger = logger;
     }
 
-    public async Task<UserDto?> GetByIdAsync(Guid id)
+    public async Task<UserDto> GetByIdAsync(Guid id)
     {
         string key = $"user-{id}";
 
@@ -33,21 +33,16 @@ public class CachedUserService : IUserService
         if(!string.IsNullOrEmpty(cachedUser))
         {
             _logger.LogInformation("Returning user {id} from Redis Cache",id);
-            return JsonSerializer.Deserialize<UserDto>(cachedUser);
+            return JsonSerializer.Deserialize<UserDto>(cachedUser)!;
         }
 
         var user = await _innerService.GetByIdAsync(id);
-
-        if(user != null)
-        {
-         
-
-            await _cache.SetStringAsync(key,JsonSerializer.Serialize(user),_cacheOptions);
-        }
+        await _cache.SetStringAsync(key,JsonSerializer.Serialize(user),_cacheOptions);
+        
         return user;
     }
 
-    public async Task<UserDto?> GetByEmailAsync(string email)
+    public async Task<UserDto> GetByEmailAsync(string email)
     {
         string key = $"user-email-{email.ToLower()}";
 
@@ -56,15 +51,12 @@ public class CachedUserService : IUserService
         if(!string.IsNullOrEmpty(cachedUser))
         {
             _logger.LogInformation("Cache HIT: Returning user {Email} from redis",email);
-            return JsonSerializer.Deserialize<UserDto>(cachedUser);
+            return JsonSerializer.Deserialize<UserDto>(cachedUser)!;
         }
 
         var user = await _innerService.GetByEmailAsync(email);
-
-        if(user != null)
-        {
-            await _cache.SetStringAsync(key,JsonSerializer.Serialize(user),_cacheOptions);
-        }
+        await _cache.SetStringAsync(key,JsonSerializer.Serialize(user),_cacheOptions);
+        
         return user;
     }
 

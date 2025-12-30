@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.DTOs;
 using Shared.Events;
+using Shared.Exceptions;
 using Shared.HttpClients;
 using Shared.Models;
 using TicketService.Data;
@@ -40,7 +41,7 @@ public class AssignToAgentCommandHandler : IRequestHandler<AssignToAgentCommand,
 
         if(ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket {command.TicketId} not found");
+            throw new NotFoundException("Ticket", command.TicketId);
         }
 
         try
@@ -49,7 +50,7 @@ public class AssignToAgentCommandHandler : IRequestHandler<AssignToAgentCommand,
 
             if(agentExists == null)
             {
-                throw new KeyNotFoundException($"Agent {command.AgentId} not found");
+                throw new NotFoundException("Agent", command.AgentId);
             }
         }catch(Exception ex)
         {

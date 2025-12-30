@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.DTOs;
 using Shared.Events;
+using Shared.Exceptions;
 using Shared.Models;
 using UserService.Data;
 
@@ -30,7 +31,7 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand,UserDt
     
         if(exsistingUser != null)
         {
-            throw new InvalidOperationException($"User with email: {command.Email} already exsists");
+            throw new ConflictException("User", "email", command.Email);
         }
 
         var user = new User

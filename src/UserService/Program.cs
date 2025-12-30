@@ -117,6 +117,10 @@ builder.Services.AddMediatR(cfg =>{
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 builder.Services.AddAuthorization();
+// Add exception handling
+builder.Services.AddExceptionHandler<Shared.Exceptions.GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -195,6 +199,8 @@ app.UseCors("AllowAll");
 
 // HTTPS Redirection - nie potrzebne (ALB robi SSL termination w AWS)
 // app.UseHttpsRedirection();
+
+app.UseExceptionHandler();
 
 // Authentication & Authorization
 app.UseAuthentication();

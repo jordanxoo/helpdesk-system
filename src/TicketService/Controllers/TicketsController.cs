@@ -238,15 +238,8 @@ public async Task<ActionResult<TicketDto>> AssignToAgent(Guid id, Guid agentId)
             return Unauthorized(new { message = "Invalid user ID" });
         }
 
-        try
-        {
-            var ticket = await _ticketService.AddCommentAsync(id, userId, request);
-            return Ok(ticket);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var ticket = await _ticketService.AddCommentAsync(id, userId, request);
+        return Ok(ticket);
     }
 
     /// <summary>
@@ -289,15 +282,8 @@ public async Task<ActionResult<TicketDto>> AssignToAgent(Guid id, Guid agentId)
             return BadRequest(new {message = "File to large (max 10 MB)"});
         }
 
-        try
-        {
-            var attachment = await _ticketService.AddAttachmentAsync(id,userID,file);
-            return Ok(attachment);
-        }
-        catch(KeyNotFoundException ex)
-        {
-            return NotFound(new {message = ex.Message});
-        }
+        var attachment = await _ticketService.AddAttachmentAsync(id,userID,file);
+        return Ok(attachment);
     }
 
     /// <summary>

@@ -2,9 +2,10 @@ using MediatR;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Shared.DTOs;
+using Shared.Events;
+using Shared.Exceptions;
 using Shared.Models;
 using TicketService.Data;
-using Shared.Events;
 
 namespace TicketService.Features.Tickets.Commands.ChangeStatus;
 
@@ -34,7 +35,7 @@ public class ChangeStatusCommandHandler : IRequestHandler<ChangeStatusCommand,Ti
 
         if(ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket {command.TicketId} not found");
+            throw new NotFoundException("Ticket", command.TicketId);
         }
 
         var oldStatus = ticket.Status;

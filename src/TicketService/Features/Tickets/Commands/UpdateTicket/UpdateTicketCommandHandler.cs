@@ -2,6 +2,7 @@ using System.Formats.Asn1;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.DTOs;
+using Shared.Exceptions;
 using Shared.Models;
 using TicketService.Data;
 
@@ -30,7 +31,7 @@ public class UpdateTicketCommandHandler : IRequestHandler<UpdateTicketCommand,Ti
 
         if(ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket {command.TicketId} not found");
+            throw new NotFoundException("Ticket", command.TicketId);
 
         }
 

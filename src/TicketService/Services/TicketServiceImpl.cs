@@ -2,14 +2,14 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 using Shared.DTOs;
-using Shared.Models;
 using Shared.Events;
-//using Shared.Messaging;
+using Shared.Exceptions;
 using Shared.HttpClients;
+using Shared.Models;
+using TicketService.Configuration;
 using TicketService.Data;
 using TicketService.Repositories;
 using MassTransit;
-using TicketService.Configuration;
 
 namespace TicketService.Services;
 
@@ -53,7 +53,7 @@ public class TicketServiceImpl : ITicketService
         _logger.LogInformation("Adding attachment to ticket {TicketID} by user {userID}", ticketID, userId);
     
         var ticket = await _repository.GetByIdAsync(ticketID, false)
-            ?? throw new KeyNotFoundException($"Ticket {ticketID} not found");
+            ?? throw new NotFoundException("Ticket", ticketID);
     
         var fileID = Guid.NewGuid();
         var fileExtension = Path.GetExtension(file.FileName);
@@ -254,7 +254,7 @@ public class TicketServiceImpl : ITicketService
             
             if (request.CustomerId.HasValue && request.CustomerId.Value != userId)
             {
-                throw new ArgumentException("Customers can only create tickets for themselves");
+                throw new BadRequestException("Customers can only create tickets for themselves");
             }
         }
         else if (userRole == "Agent" || userRole == "Administrator")
@@ -262,7 +262,7 @@ public class TicketServiceImpl : ITicketService
             // Agent/Admin must provide CustomerId
             if (!request.CustomerId.HasValue)
             {
-                throw new ArgumentException("Agents and Administrators must specify CustomerId when creating tickets");
+                throw new BadRequestException("Agents and Administrators must specify CustomerId when creating tickets");
             }
             
             actualCustomerId = request.CustomerId.Value;
@@ -271,7 +271,7 @@ public class TicketServiceImpl : ITicketService
         }
         else
         {
-            throw new ArgumentException($"Invalid role: {userRole}");
+            throw new BadRequestException($"Invalid role: {userRole}");
         }
 
         // Determine OrganizationId
@@ -350,7 +350,7 @@ public class TicketServiceImpl : ITicketService
         var ticket = await _repository.GetByIdAsync(id, includeComments: false);
         if (ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket with id {id} not found");
+            throw new NotFoundException("Ticket", id);
         }
 
         // Store old values for audit
@@ -426,7 +426,7 @@ public class TicketServiceImpl : ITicketService
         var ticket = await _repository.GetByIdAsync(ticketId, includeComments: false);
         if (ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket with id {ticketId} not found.");
+            throw new NotFoundException("Ticket", ticketId);
         }
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
@@ -470,11 +470,11 @@ public class TicketServiceImpl : ITicketService
         _logger.LogInformation("Changing ticket {TicketId} status to {NewStatus}", ticketId, newStatus);
 
         var ticket = await _repository.GetByIdAsync(ticketId, false);
-        if (ticket == null) throw new KeyNotFoundException($"Ticket {ticketId} not found");
+        if (ticket == null) throw new NotFoundException("Ticket", ticketId);
 
         if (!Enum.TryParse<TicketStatus>(newStatus, out var status))
         {
-            throw new ArgumentException($"Invalid status: {newStatus}");
+            throw new BadRequestException($"Invalid status: {newStatus}");
         }
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
@@ -519,7 +519,7 @@ public class TicketServiceImpl : ITicketService
         var ticket = await _repository.GetByIdAsync(id, includeComments: false);
         if (ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket with id {id} not found");
+            throw new NotFoundException("Ticket", id);
         }
 
         await _repository.DeleteAsync(id);
@@ -533,7 +533,7 @@ public class TicketServiceImpl : ITicketService
         var ticket = await _repository.GetByIdAsync(ticketId, includeComments: false);
         if (ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket with id {ticketId} not found");
+            throw new NotFoundException("Ticket", ticketId);
         }
 
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -586,7 +586,7 @@ public class TicketServiceImpl : ITicketService
         var ticket = await _repository.GetByIdAsync(ticketId, includeComments: false);
         if (ticket == null)
         {
-            throw new KeyNotFoundException($"Ticket with id {ticketId} not found");
+            throw new NotFoundException("Ticket", ticketId);
         }
 
         var auditLogs = await _dbContext.TicketAuditLogs

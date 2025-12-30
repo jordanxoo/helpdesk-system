@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.VisualBasic;
 using Shared.DTOs;
+using Shared.Exceptions;
 using Shared.Models;
 using UserService.Repositories;
 
@@ -18,18 +19,26 @@ public class UserServiceImpl : IUserService
         this._repository = repository;
     }
 
-    public async Task<UserDto?> GetByIdAsync(Guid id)
+    public async Task<UserDto> GetByIdAsync(Guid id)
     {
         _logger.LogInformation("Fetching user with id: {UserId}", id);
 
         var user = await _repository.GetByIdAsync(id);
-        return user != null ? MapToDto(user) : null;
+        if (user == null)
+        {
+            throw new NotFoundException("User", id);
+        }
+        return MapToDto(user);
     }
-    public async Task<UserDto?> GetByEmailAsync(string email)
+    public async Task<UserDto> GetByEmailAsync(string email)
     {
         _logger.LogInformation("Fetching user with email: {email}", email);
         var user = await _repository.GetByEmailAsync(email);
-        return user != null ? MapToDto(user) : null;
+        if (user == null)
+        {
+            throw new NotFoundException($"User with email '{email}' was not found.");
+        }
+        return MapToDto(user);
     }
 
     public async Task<UserListResponse> GetAllAsync(int page, int pageSize)
@@ -65,11 +74,11 @@ public class UserServiceImpl : IUserService
 
         if (await _repository.EmailExistsAsync(request.Email))
         {
-            throw new InvalidOperationException($"User with email {request.Email} already exists");
+            throw new ConflictException("User", "email", request.Email);
         }
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
         {
-            throw new ArgumentException($"Invalid role: {request.Role}");
+            throw new BadRequestException($"Invalid role: {request.Role}");
         }
 
         var user = new User
@@ -95,17 +104,17 @@ public class UserServiceImpl : IUserService
 
         if (await _repository.GetByIdAsync(userId) != null)
         {
-            throw new InvalidOperationException($"User with id {userId} already exists");
+            throw new ConflictException("User", "id", userId);
         }
         
         if (await _repository.EmailExistsAsync(request.Email))
         {
-            throw new InvalidOperationException($"User with email {request.Email} already exists");
+            throw new ConflictException("User", "email", request.Email);
         }
         
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
         {
-            throw new ArgumentException($"Invalid role: {request.Role}");
+            throw new BadRequestException($"Invalid role: {request.Role}");
         }
 
         var user = new User
@@ -138,7 +147,7 @@ public class UserServiceImpl : IUserService
         var user = await _repository.GetByIdAsync(id);
         if (user == null)
         {
-            throw new KeyNotFoundException($"User with id {id} not found");
+            throw new NotFoundException("User", id);
         }
 
         var hasChanges = false;
@@ -204,7 +213,7 @@ public class UserServiceImpl : IUserService
         
         if (!await _repository.ExistsAsync(id))
         {
-            throw new KeyNotFoundException($"User with id {id} not found");
+            throw new NotFoundException("User", id);
         }
 
         await _repository.DeleteAsync(id);
@@ -219,7 +228,7 @@ public class UserServiceImpl : IUserService
         var user = await _repository.GetByIdAsync(userId);
         if (user == null)
         {
-            throw new KeyNotFoundException($"User with id {userId} not found");
+            throw new NotFoundException("User", userId);
         }
 
         user.OrganizationId = organizationId;

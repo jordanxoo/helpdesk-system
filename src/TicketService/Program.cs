@@ -15,13 +15,12 @@ using Shared.HttpClients;
 using FluentValidation.AspNetCore;
 using FluentValidation;
 using TicketService.Validators;
-using TicketService.Middleware;
 using MassTransit;
 using Amazon.S3;
 using TicketService.Configuration;
 using Shared.Behaviors;
 using MediatR;
-
+using Shared.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -206,6 +205,10 @@ builder.Services.AddMassTransit( x =>
 
 
 // Controllers
+// Add exception handling
+builder.Services.AddExceptionHandler<Shared.Exceptions.GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -299,6 +302,8 @@ app.UseSwaggerUI(c =>
 // app.UseHttpsRedirection(); // USUNIĘTE
 
 app.UseCors("AllowFrontend");
+
+app.UseExceptionHandler();
 
 app.UseAuthentication();
 app.UseAuthorization();

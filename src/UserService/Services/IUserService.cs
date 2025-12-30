@@ -4,8 +4,8 @@ namespace UserService.Services;
 
 public interface IUserService
 {
-    Task<UserDto?> GetByIdAsync(Guid id);
-    Task<UserDto?> GetByEmailAsync(string email);
+    Task<UserDto> GetByIdAsync(Guid id);
+    Task<UserDto> GetByEmailAsync(string email);
     Task<UserListResponse> GetAllAsync(int page, int pageSize);
     Task<UserListResponse> SearchAsync(UserFilterRequest filter);
     Task<UserDto> CreateAsync(CreateUserRequest request);
