@@ -53,4 +53,6 @@ public interface ISessionService
     /// wywolywane cykliczne np co godzine xd
     /// </summary>
     Task CleanupExpiredSessionsAsync(CancellationToken ct = default);
+
+    Task<int> CleanupExpiredSessionsAsync();
 }

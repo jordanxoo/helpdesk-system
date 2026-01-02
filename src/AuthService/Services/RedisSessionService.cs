@@ -324,4 +324,76 @@ public class RedisSessionService : ISessionService
     public static string GetBlacklistKey(string sessionId) => $"blacklist:{sessionId}";
 
     public static string GetUserSessionListKey(Guid userId) => $"sessions:{userId}:list";
+
+    public async Task<int> CleanupExpiredSessionsAsync()
+    {
+        _logger.LogInformation("Starting expired sessions cleanup job");
+
+        var cleanedCount = 0;
+        
+        // Pobierz wszystkich userów którzy mają sesje
+        var allUserIds = await GetAllUserIdsAsync(CancellationToken.None);
+
+        if(allUserIds == null || allUserIds.Count == 0)
+        {
+            _logger.LogInformation("No user sessions found to clean");
+            return 0;
+        }
+
+        foreach(var userId in allUserIds)
+        {
+            var userSessionListKey = GetUserSessionListKey(userId);
+            var sessionsJson = await _cache.GetStringAsync(userSessionListKey);
+
+            if(string.IsNullOrEmpty(sessionsJson))
+            {
+                continue;
+            }
+            
+            var sessionIds = JsonSerializer.Deserialize<List<string>>(sessionsJson) ?? new List<string>();
+            var validSessionIds = new List<string>();
+
+            foreach(var sessionId in sessionIds)
+            {
+                var sessionKey = GetSessionKey(userId, sessionId);
+                var sessionJson = await _cache.GetStringAsync(sessionKey);
+
+                if(string.IsNullOrEmpty(sessionJson))
+                {
+                    // Session wygasła
+                    cleanedCount++;
+                    _logger.LogDebug("Removed expired session: {SessionId} for user {UserId}", sessionId, userId);
+                }
+                else
+                {
+                    validSessionIds.Add(sessionId);
+                }
+            }
+
+            // Zaktualizuj listę sesji jeśli coś się zmieniło
+            if(validSessionIds.Count != sessionIds.Count)
+            {
+                if(validSessionIds.Count > 0)
+                {
+                    await _cache.SetStringAsync(
+                        userSessionListKey,
+                        JsonSerializer.Serialize(validSessionIds),
+                        new DistributedCacheEntryOptions
+                        {
+                            AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(30)
+                        }
+                    );
+                }
+                else
+                {
+                    // Brak sesji - usuń listę i użytkownika
+                    await _cache.RemoveAsync(userSessionListKey);
+                    await RemoveUserIdAsync(userId, CancellationToken.None);
+                }   
+            }
+        }
+        
+        _logger.LogInformation("Cleaned up {Count} expired sessions", cleanedCount);
+        return cleanedCount;
+    }
 }

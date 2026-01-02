@@ -15,7 +15,8 @@ using Shared.Constants;
 using Shared.Models;
 using AuthService.Data;
 using AuthService.Services;
-
+using Hangfire;
+using Hangfire.PostgreSql;
 var builder = WebApplication.CreateBuilder(args);
 
 // Konfiguracja JwtSettings z appsettings.json
@@ -219,6 +220,24 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddHangfire(cfg =>
+cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+.UseSimpleAssemblyNameTypeSerializer()
+.UseRecommendedSerializerSettings()
+.UsePostgreSqlStorage(o =>
+{
+    o.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"));
+}));
+
+builder.Services.AddHangfireServer(o =>
+{
+    o.ServerName = "AuthService-HangfireServer";
+    o.WorkerCount = 5;
+});
+
+
+
+
 // Logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -241,6 +260,27 @@ if (app.Environment.IsDevelopment())
     {
         app.Logger.LogWarning(ex, "Database migration failed or not needed");
     }
+}
+
+// hangfire dashboard i jobs 
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] {new AuthService.Configuration.HangfireAuthorizationFilter() },
+    DashboardTitle = "AuthService - Background Jobs"
+});
+
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    recurringJobManager.AddOrUpdate<ISessionService>(
+        "cleanup-expired-sessions",
+        service => service.CleanupExpiredSessionsAsync(),
+        Cron.Hourly
+        ,new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.Utc
+        });
 }
 
 // Inicjalizacja ról - POTEM role (potrzebują bazy danych)
