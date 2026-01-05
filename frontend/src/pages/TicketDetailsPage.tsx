@@ -375,14 +375,14 @@ export default function TicketDetailsPage() {
                                             Przypisz agenta
                                         </label>
                                         <Select 
-                                            value={ticket.agentId || ''} 
-                                            onValueChange={handleAssignAgent}
+                                            value={ticket.agentId || 'unassigned'} 
+                                            onValueChange={(value) => handleAssignAgent(value === 'unassigned' ? '' : value)}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Wybierz agenta..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="">Nieprzypisany</SelectItem>
+                                                <SelectItem value="unassigned">Nieprzypisany</SelectItem>
                                                 {agents.map((agent) => (
                                                     <SelectItem key={agent.id} value={agent.id}>
                                                         {agent.fullName || agent.email}

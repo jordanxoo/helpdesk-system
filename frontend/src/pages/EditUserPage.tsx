@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
-import { mockUsers } from '@/data/mockData';
+import { userService } from '@/services/userService';
 import type { User } from '@/types/user.types';
 import Layout from '@/components/ui/Layout';
 
@@ -24,6 +24,7 @@ export default function EditUserPage() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
         loadUser();
@@ -34,12 +35,11 @@ export default function EditUserPage() {
         
         try {
             setLoading(true);
-            // TODO: Replace with real API call
-            // const data = await userService.getUserById(id);
-            const data = mockUsers.find(u => u.id === id);
+            setLoadError(null);
+            const data = await userService.getUserById(id);
             
             if (data) {
-                setUser(data as User);
+                setUser(data);
                 setFormData({
                     firstName: data.firstName,
                     lastName: data.lastName,
@@ -48,8 +48,13 @@ export default function EditUserPage() {
                     isActive: data.isActive,
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to load user:', error);
+            if (error.response?.status === 404) {
+                setUser(null);
+            } else {
+                setLoadError('Nie udało się załadować danych użytkownika. Spróbuj ponownie.');
+            }
         } finally {
             setLoading(false);
         }
@@ -79,17 +84,28 @@ export default function EditUserPage() {
 
         try {
             setSaving(true);
-            // TODO: Replace with real API call
-            // await userService.updateUser(id, formData);
-            console.log('Updating user:', id, formData);
+            setErrors({});
             
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Strip spaces from phone number for backend validation
+            const cleanPhoneNumber = formData.phoneNumber 
+                ? formData.phoneNumber.replace(/\s/g, '') 
+                : undefined;
+            
+            await userService.updateUser(id, {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                phoneNumber: cleanPhoneNumber || undefined,
+                role: formData.role,
+                isActive: formData.isActive,
+            });
             
             navigate('/users');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to update user:', error);
-            setErrors({ submit: 'Nie udało się zaktualizować użytkownika' });
+            const errorMessage = error.response?.data?.message || 
+                                 error.response?.data?.title ||
+                                 'Nie udało się zaktualizować użytkownika';
+            setErrors({ submit: errorMessage });
         } finally {
             setSaving(false);
         }
@@ -114,6 +130,24 @@ export default function EditUserPage() {
                     <p className="mt-4 text-gray-600">Ładowanie danych użytkownika...</p>
                 </div>
             </div>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <Layout currentPage="/users">
+                <div className="flex flex-col justify-center items-center h-64">
+                    <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                    <p className="text-red-600 mb-4">{loadError}</p>
+                    <div className="flex gap-4">
+                        <Button onClick={loadUser}>Spróbuj ponownie</Button>
+                        <Button variant="outline" onClick={() => navigate('/users')}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Powrót do listy
+                        </Button>
+                    </div>
+                </div>
+            </Layout>
         );
     }
 

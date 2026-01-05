@@ -1,12 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { mockTickets } from '@/data/mockData';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '@/components/ui/Layout';
 import { useEffect, useState } from 'react';
 import { ticketService } from '@/services/ticketService';
 import { Loader2 } from 'lucide-react';
+import type { Ticket } from '@/types/ticket.types';
 
 export default function DashboardPage() {
     const navigate = useNavigate();
@@ -19,32 +19,59 @@ export default function DashboardPage() {
         inProgress: 0,
         resolved: 0,
     });
+    const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
+    const [ticketsLoading, setTicketsLoading] = useState(true);
 
     useEffect(() => {
-        const loadStatistics = async () => {
+        const loadDashboardData = async () => {
             try {
                 setLoading(true);
-                const data = await ticketService.getStatistics();
+                setTicketsLoading(true);
+
+                // Load statistics
+                const statsData = await ticketService.getStatistics();
                 setStats({
-                    total: data.total,
-                    open: (data.byStatus['New'] || 0) + (data.byStatus['Open'] || 0),
-                    inProgress: data.byStatus['InProgress'] || 0,
-                    resolved: data.byStatus['Resolved'] || 0,
+                    total: statsData.total,
+                    open: (statsData.byStatus['New'] || 0) + (statsData.byStatus['Open'] || 0),
+                    inProgress: statsData.byStatus['InProgress'] || 0,
+                    resolved: statsData.byStatus['Resolved'] || 0,
                 });
+                setLoading(false);
+
+                // Load recent tickets based on user role
+                let ticketsResponse: any;
+                if (role === 'Customer') {
+                    ticketsResponse = await ticketService.getMyTickets();
+                } else {
+                    ticketsResponse = await ticketService.getAllTickets();
+                }
+
+                // Handle different response formats from API
+                const ticketsData = ticketsResponse.tickets || ticketsResponse.items || ticketsResponse;
+                
+                if (Array.isArray(ticketsData)) {
+                    // Take only the first 5 tickets for recent view
+                    setRecentTickets(ticketsData.slice(0, 5));
+                } else {
+                    console.error('Unexpected tickets response format:', ticketsResponse);
+                    setRecentTickets([]);
+                }
             } catch (error) {
-                console.error('Failed to load statistics:', error);
+                console.error('Failed to load dashboard data:', error);
             } finally {
                 setLoading(false);
+                setTicketsLoading(false);
             }
         };
 
-        loadStatistics();
-    }, []);
+        loadDashboardData();
+    }, [role]);
 
     const getStatusVariant = (status: string) => {
         switch (status) {
             case 'Open':
+            case 'New':
                 return 'default';
             case 'InProgress':
                 return 'secondary';
@@ -52,6 +79,22 @@ export default function DashboardPage() {
                 return 'outline';
             default:
                 return 'default';
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'Open':
+            case 'New':
+                return 'Otwarte';
+            case 'InProgress':
+                return 'W trakcie';
+            case 'Resolved':
+                return 'Rozwiązane';
+            case 'Closed':
+                return 'Zamknięte';
+            default:
+                return status;
         }
     };
 
@@ -67,6 +110,21 @@ export default function DashboardPage() {
                 return 'text-green-600';
             default:
                 return 'text-grey-600';
+        }
+    };
+
+    const getPriorityLabel = (priority: string) => {
+        switch (priority) {
+            case 'Critical':
+                return 'Krytyczny';
+            case 'High':
+                return 'Wysoki';
+            case 'Medium':
+                return 'Średni';
+            case 'Low':
+                return 'Niski';
+            default:
+                return priority;
         }
     };
 
@@ -118,57 +176,65 @@ export default function DashboardPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className='space-y-4'>
-                        {mockTickets.slice(0, 5).map((ticket) => (
-                            <Card key={ticket.id} className='hover:shadow-lg transition-shadow cursor-pointer'>
-                                <CardHeader>
-                                    <div className="flex justify-between items-start">
-                                        <div className='flex-1'>
-                                            <div className='flex items-center gap-3 mb-2'>
-                                                <CardTitle className='text-lg'>{ticket.title}</CardTitle>
-                                                <Badge variant={getStatusVariant(ticket.status)}>
-                                                    {ticket.status === 'Open' ? 'Otwarte' :
-                                                        ticket.status === 'InProgress' ? 'W trakcie' : 'Rozwiązane'}
-                                                </Badge>
-                                                <span className={`text-sm font-semibold ${getPriorityColor(ticket.priority)}`}>
-                                                    {ticket.priority === 'Critical' ? 'Krytyczny' :
-                                                        ticket.priority === 'High' ? 'Wysoki' :
-                                                            ticket.priority === 'Medium' ? 'Średni' : 'Niski'}
-                                                </span>
+                    {ticketsLoading ? (
+                        <div className="flex justify-center items-center py-12">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                            <span className="ml-2 text-gray-500">Ładowanie zgłoszeń...</span>
+                        </div>
+                    ) : (
+                        <div className='space-y-4'>
+                            {recentTickets.map((ticket) => (
+                                <Card 
+                                    key={ticket.id} 
+                                    className='hover:shadow-lg transition-shadow cursor-pointer'
+                                    onClick={() => navigate(`/tickets/${ticket.id}`)}
+                                >
+                                    <CardHeader>
+                                        <div className="flex justify-between items-start">
+                                            <div className='flex-1'>
+                                                <div className='flex items-center gap-3 mb-2 flex-wrap'>
+                                                    <CardTitle className='text-lg'>{ticket.title}</CardTitle>
+                                                    <Badge variant={getStatusVariant(ticket.status)}>
+                                                        {getStatusLabel(ticket.status)}
+                                                    </Badge>
+                                                    <span className={`text-sm font-semibold ${getPriorityColor(ticket.priority)}`}>
+                                                        {getPriorityLabel(ticket.priority)}
+                                                    </span>
+                                                </div>
+                                                <CardDescription className='line-clamp-2'>{ticket.description}</CardDescription>
                                             </div>
-                                            <CardDescription className='line-clamp-2'>{ticket.description}</CardDescription>
                                         </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className='flex justify-between items-center text-sm text-gray-600'>
-                                        <div>
-                                            {ticket.agentName ? (
-                                                <span>Przypisany do: <span className='font-semibold'>{ticket.agentName}</span></span>
-                                            ) : (
-                                                <span className='text-gray-400'>Nieprzypisany</span>
-                                            )}
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className='flex justify-between items-center text-sm text-gray-600'>
+                                            <div>
+                                                {ticket.agentName || ticket.assignedAgentName ? (
+                                                    <span>Przypisany do: <span className='font-semibold'>{ticket.agentName || ticket.assignedAgentName}</span></span>
+                                                ) : (
+                                                    <span className='text-gray-400'>Nieprzypisany</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                {new Date(ticket.createdAt).toLocaleDateString('pl-PL', {
+                                                    day: 'numeric',
+                                                    month: 'long',
+                                                    year: 'numeric',
+                                                })}
+                                            </div>
                                         </div>
-                                        <div>
-                                            {new Date(ticket.createdAt).toLocaleDateString('pl-PL', {
-                                                day: 'numeric',
-                                                month: 'long',
-                                                year: 'numeric',
-                                            })}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                        {mockTickets.length === 0 && (
-                            <Card className='text-center py-12'>
-                                <CardContent>
-                                    <p className='text-gray-500 mb-4'>Brak zgłoszeń do wyświetlenia</p>
-                                    <Button>Utwórz nowe zgłoszenie</Button>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                            {recentTickets.length === 0 && (
+                                <Card className='text-center py-12'>
+                                    <CardContent>
+                                        <p className='text-gray-500 mb-4'>Brak zgłoszeń do wyświetlenia</p>
+                                        <Button onClick={() => navigate('/tickets/create')}>Utwórz nowe zgłoszenie</Button>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </Layout>
