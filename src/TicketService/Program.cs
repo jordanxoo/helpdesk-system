@@ -21,6 +21,8 @@ using TicketService.Configuration;
 using Shared.Behaviors;
 using MediatR;
 using Shared.Exceptions;
+using Hangfire;
+using Hangfire.PostgreSql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,9 +76,21 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 
+//hangfire configuration
 
+builder.Services.AddHangfire(cfg => cfg
+.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+.UseSimpleAssemblyNameTypeSerializer()
+.UseRecommendedSerializerSettings()
+.UsePostgreSqlStorage(o =>
+{
+    o.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"));
+}));
 
-
+builder.Services.AddHangfireServer(o =>{
+    o.ServerName = "TicketService - HangfireServer";
+    o.WorkerCount = 10;
+});
 // Konfiguracja PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<TicketDbContext>(options =>
@@ -110,6 +124,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 builder.Services.AddScoped<ITicketService, TicketServiceImpl>();
 builder.Services.Decorate<ITicketService, CachedTicketService>();
+
+// Background Jobs Service for Hangfire
+builder.Services.AddScoped<ITicketBackgroundJobsService, TicketBackgroundJobsService>();
 
 // HTTP Client for UserService communication
 var userServiceUrl = builder.Configuration["Services:UserService:Url"] 
@@ -272,6 +289,50 @@ var app = builder.Build();
 
 // uzycie xeception handlera
 app.UseExceptionHandler();
+
+
+//hangifre dashboard and jobs
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] {new TicketService.Configuration.HangfireAuthorizationFilter()},
+    DashboardTitle = "TicketService - Background Jobs"
+});
+
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    //sla check co 15 minut
+    recurringJobManager.AddOrUpdate<ITicketBackgroundJobsService>
+    (
+        "check-sla-overdue",
+        service => service.CheckOverdueSlaTicketsAsync(),
+        "*/15 * * * *",
+        new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.Utc
+        });
+
+    recurringJobManager.AddOrUpdate<ITicketBackgroundJobsService>(
+        "auto-close-resolved",
+        service => service.AutoCloseResolvedTicketsAsync(),
+        "0 2 * * *",
+        new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.Utc
+        });
+
+    recurringJobManager.AddOrUpdate<ITicketBackgroundJobsService>(
+        "send-ticket-reminders",
+        service => service.SendTicketRemindersAsync(),
+        Cron.Hourly,
+        new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.Utc
+        }
+    );
+}
 
 
 // Database Migration

@@ -331,7 +331,7 @@ public class RedisSessionService : ISessionService
 
         var cleanedCount = 0;
         
-        // Pobierz wszystkich userów którzy mają sesje
+  
         var allUserIds = await GetAllUserIdsAsync(CancellationToken.None);
 
         if(allUserIds == null || allUserIds.Count == 0)
@@ -360,7 +360,7 @@ public class RedisSessionService : ISessionService
 
                 if(string.IsNullOrEmpty(sessionJson))
                 {
-                    // Session wygasła
+               
                     cleanedCount++;
                     _logger.LogDebug("Removed expired session: {SessionId} for user {UserId}", sessionId, userId);
                 }
@@ -370,7 +370,7 @@ public class RedisSessionService : ISessionService
                 }
             }
 
-            // Zaktualizuj listę sesji jeśli coś się zmieniło
+
             if(validSessionIds.Count != sessionIds.Count)
             {
                 if(validSessionIds.Count > 0)
@@ -386,7 +386,7 @@ public class RedisSessionService : ISessionService
                 }
                 else
                 {
-                    // Brak sesji - usuń listę i użytkownika
+                    
                     await _cache.RemoveAsync(userSessionListKey);
                     await RemoveUserIdAsync(userId, CancellationToken.None);
                 }   
