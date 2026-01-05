@@ -128,6 +128,13 @@ builder.Services.Decorate<ITicketService, CachedTicketService>();
 // Background Jobs Service for Hangfire
 builder.Services.AddScoped<ITicketBackgroundJobsService, TicketBackgroundJobsService>();
 
+
+//outbox pattern zapisuje events do DB zamiast bezposrednio do rabbit
+
+builder.Services.AddScoped<IOutboxService,OutboxService>();
+
+builder.Services.AddScoped<IOutboxProcessorService,OutboxProcessorService>();
+
 // HTTP Client for UserService communication
 var userServiceUrl = builder.Configuration["Services:UserService:Url"] 
     ?? throw new InvalidOperationException("UserService URL not configured");
@@ -332,6 +339,15 @@ using (var scope = app.Services.CreateScope())
             TimeZone = TimeZoneInfo.Utc
         }
     );
+
+    recurringJobManager.AddOrUpdate<IOutboxProcessorService>(
+        "process-outbox-messages",
+        service => service.ProcessPendingMessageAsync(),
+        "*/30 * * * * *",
+        new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.Utc
+        });
 }
 
 

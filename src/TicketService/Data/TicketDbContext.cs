@@ -16,6 +16,9 @@ public class TicketDbContext : DbContext
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<TicketAttachment> TicketAttachments { get; set; } = null!;
     public DbSet<TicketAuditLog> TicketAuditLogs { get; set; } = null!;
+    
+    // Outbox Pattern - transactional messaging
+    public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -462,6 +465,48 @@ public class TicketDbContext : DbContext
 
             entity.HasIndex(a => a.CreatedAt)
                 .HasDatabaseName("ix_ticket_audit_logs_created_at");
+        });
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("outbox_messages");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Type)
+            .HasColumnName("type")
+            .HasMaxLength(200)
+            .IsRequired();
+
+            entity.Property(e => e.Payload)
+            .HasColumnName("payload")
+            .IsRequired();
+
+            entity.Property(e => e.AggregateId)
+            .HasColumnName("aggregate_id")
+            .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+            .HasColumnName("created_at")
+            .IsRequired();
+
+            entity.Property(e => e.ProcessedAt)
+            .HasColumnName("processed_at");
+
+            entity.Property(e => e.RetryCount)
+            .HasColumnName("retry_count")
+            .HasDefaultValue(0);
+
+            entity.Property(e => e.Error)
+            .HasColumnName("error")
+            .HasMaxLength(2000);
+
+            entity.HasIndex(e => e.ProcessedAt)
+            .HasDatabaseName("ix_outbox_messages_processed_at");
+            entity.HasIndex(e => e.CreatedAt)
+            .HasDatabaseName("ix_outbox_messages_created_at");
+
+            entity.HasIndex(e => new {e.ProcessedAt,e.CreatedAt})
+            .HasDatabaseName("ix_outbox_messages_processed_created");
         });
     }
 }

@@ -17,7 +17,7 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand,Ti
 {
     private readonly ITicketRepository _repository;
     private readonly TicketDbContext _dbContext;
-    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IOutboxService _outboxService;
     private readonly IUserServiceClient _userServiceClient;
     private readonly ILogger<CreateTicketCommandHandler> _logger;
 
@@ -25,13 +25,13 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand,Ti
 
     public CreateTicketCommandHandler(ITicketRepository repository, 
     TicketDbContext dbContext,
-    IPublishEndpoint publishEndpoint,
+    IOutboxService outboxService,
     IUserServiceClient userServiceClient,
     ILogger<CreateTicketCommandHandler> logger,
     IFileStorageService fileStorageService)
     {
         _dbContext = dbContext;
-        _publishEndpoint = publishEndpoint;
+        _outboxService = outboxService;
         _userServiceClient = userServiceClient;
         _logger = logger;
         _repository = repository;
@@ -85,12 +85,13 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand,Ti
             CreatedAt = DateTime.UtcNow
         });
 
-        await _publishEndpoint.Publish(new TicketCreatedEvent
+        await _outboxService.SaveEventAsync(new TicketCreatedEvent
         {
             TicketId = createdTicket.Id,
             CustomerId = createdTicket.CustomerId,
-            Timestamp = DateTime.UtcNow
-        },ct);
+            Timestamp = DateTime.UtcNow,
+
+        },createdTicket.Id);
 
         await _dbContext.SaveChangesAsync(ct);
 
