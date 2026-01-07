@@ -1,14 +1,22 @@
 import api from './api';
-import type { Ticket, CreateTicketRequest, TicketComment, TicketDetails } from '../types/ticket.types';
+import type { Ticket, CreateTicketRequest, TicketComment, TicketDetails, TicketListResponse } from '../types/ticket.types';
+
+// Interface for paginated response from backend
+interface TicketApiResponse {
+    tickets: Ticket[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}
 
 export const ticketService = {
-    async getMyTickets(): Promise<Ticket[]> {
-        const response = await api.get<Ticket[]>('/api/tickets/my-tickets');
+    async getMyTickets(): Promise<TicketApiResponse> {
+        const response = await api.get<TicketApiResponse>('/api/tickets/my-tickets');
         return response.data;
     },
 
-    async getAllTickets(): Promise<Ticket[]> {
-        const response = await api.get<Ticket[]>('/api/tickets');
+    async getAllTickets(): Promise<TicketApiResponse> {
+        const response = await api.get<TicketApiResponse>('/api/tickets');
         return response.data;
     },
 
@@ -23,12 +31,12 @@ export const ticketService = {
     },
 
     async updateTicketStatus(id: string, status: string): Promise<Ticket> {
-        const response = await api.patch<Ticket>(`/api/tickets/${id}/status`, {newStatus: status });
+        const response = await api.patch<Ticket>(`/api/tickets/${id}/status`, { newStatus: status });
         return response.data;
     },
 
-    async updateTicketPriority(id:string,priority: string) : Promise<Ticket> {
-        const response = await api.patch<Ticket>(`/api/tickets/${id}/priority`, {newPriority: priority});
+    async updateTicketPriority(id: string, priority: string): Promise<Ticket> {
+        const response = await api.patch<Ticket>(`/api/tickets/${id}/priority`, { newPriority: priority });
         return response.data;
     },
 
@@ -46,7 +54,7 @@ export const ticketService = {
         await api.delete(`/api/tickets/${id}`);
     },
 
-    async getStatistics(): Promise<{byStatus: Record<string, number>, byPriority: Record<string, number>, total: number, unassigned: number}> {
+    async getStatistics(): Promise<{ byStatus: Record<string, number>; byPriority: Record<string, number>; total: number; unassigned: number }> {
         const response = await api.get('/api/tickets/statistics');
         return response.data;
     },

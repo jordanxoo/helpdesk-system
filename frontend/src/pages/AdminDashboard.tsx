@@ -1,33 +1,161 @@
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardDescription, CardTitle} from '@/components/ui/card';
 import { Badge} from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/ui/Layout';
-import { mockUsers, mockTickets } from '@/data/mockData';
-import { Link } from 'react-router-dom';
-import { Users, Ticket, TrendingUp, AlertCircle, CheckCircle, Clock} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Users, Ticket, TrendingUp, AlertCircle, Clock, Loader2 } from 'lucide-react';
+import { userService } from '@/services/userService';
+import { ticketService } from '@/services/ticketService';
+import type { Ticket as TicketType } from '@/types/ticket.types';
 
+interface Stats {
+    totalUsers: number;
+    activeUsers: number;
+    totalTickets: number;
+    openTickets: number;
+    inProgressTickets: number;
+    resolvedTickets: number;
+    criticalTickets: number;
+    unassignedTickets: number;
+    agents: number;
+    customers: number;
+    admins: number;
+}
 
 export default function AdminDashboard(){
- 
-    const stats = {
-        totalUsers: mockUsers.length,
-        activeUsers: mockUsers.filter( u => u.isActive).length,
-        totalTickets: mockTickets.length,
-        openTickets: mockTickets.filter(t => t.status === 'Open').length,
-        inProgressTickets: mockTickets.filter(t => t.status === 'InProgres').length,
-        resolvedTickets: mockTickets.filter(t => t.status === 'Resolved').length,
-        criticalTickets: mockTickets.filter( t => t.status === 'Critical').length,
-        unassignedTickets: mockTickets.filter(t => t.status === 'unassigned').length,
-        agents: mockUsers.filter( u => u.role === 'Agent').length,
-        customers: mockUsers.filter( u=> u.role === 'Customer').length,
+    const navigate = useNavigate();
+    const [stats, setStats] = useState<Stats>({
+        totalUsers: 0,
+        activeUsers: 0,
+        totalTickets: 0,
+        openTickets: 0,
+        inProgressTickets: 0,
+        resolvedTickets: 0,
+        criticalTickets: 0,
+        unassignedTickets: 0,
+        agents: 0,
+        customers: 0,
+        admins: 0,
+    });
+    const [recentTickets, setRecentTickets] = useState<TicketType[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadDashboardData();
+    }, []);
+
+    const loadDashboardData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Fetch users, ticket statistics and recent tickets in parallel
+            const [users, ticketStats, ticketsResponse] = await Promise.all([
+                userService.getAllUsers(),
+                ticketService.getStatistics(),
+                ticketService.getAllTickets()
+            ]);
+
+            // Calculate user stats
+            const activeUsers = users.filter(u => u.isActive).length;
+            const agents = users.filter(u => u.role === 'Agent').length;
+            const customers = users.filter(u => u.role === 'Customer').length;
+            const admins = users.filter(u => u.role === 'Administrator').length;
+
+            // Calculate ticket stats from API response
+            const openTickets = (ticketStats.byStatus['New'] || 0) + (ticketStats.byStatus['Open'] || 0);
+            const inProgressTickets = ticketStats.byStatus['InProgress'] || 0;
+            const resolvedTickets = ticketStats.byStatus['Resolved'] || 0;
+            const criticalTickets = ticketStats.byPriority['Critical'] || 0;
+
+            // Get recent tickets
+            const ticketsData = ticketsResponse.tickets || ticketsResponse;
+            if (Array.isArray(ticketsData)) {
+                setRecentTickets(ticketsData.slice(0, 5));
+            }
+
+            setStats({
+                totalUsers: users.length,
+                activeUsers,
+                totalTickets: ticketStats.total,
+                openTickets,
+                inProgressTickets,
+                resolvedTickets,
+                criticalTickets,
+                unassignedTickets: ticketStats.unassigned,
+                agents,
+                customers,
+                admins,
+            });
+        } catch (err) {
+            console.error('Failed to load dashboard data:', err);
+            setError('Nie udało się załadować danych. Spróbuj ponownie.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const recentActivity = [
-        { id: 1, action: 'Nowy użytkownik zarejestrowany', user: 'Jan Kowalski', time: '5 min temu', type: 'user' },
-        { id: 2, action: 'Zgłoszenie rozwiązane', ticket: '#1234', agent: 'Anna Nowak', time: '15 min temu', type: 'ticket' },
-        { id: 3, action: 'Krytyczne zgłoszenie utworzone', ticket: '#1235', time: '30 min temu', type: 'alert' },
-        { id: 4, action: 'Agent przypisany do zgłoszenia', ticket: '#1236', agent: 'Piotr Wiśniewski', time: '1 godz. temu', type: 'ticket' },
-    ];
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'Open':
+            case 'New':
+                return 'Otwarte';
+            case 'InProgress':
+                return 'W trakcie';
+            case 'Resolved':
+                return 'Rozwiązane';
+            case 'Closed':
+                return 'Zamknięte';
+            default:
+                return status;
+        }
+    };
+
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case 'Critical':
+                return 'text-red-600';
+            case 'High':
+                return 'text-orange-600';
+            case 'Medium':
+                return 'text-yellow-600';
+            case 'Low':
+                return 'text-green-600';
+            default:
+                return 'text-gray-600';
+        }
+    };
+
+    // Helper function to safely calculate percentage
+    const calculatePercentage = (part: number, total: number): string => {
+        if (total === 0) return '0';
+        return ((part / total) * 100).toFixed(0);
+    };
+
+    if (loading) {
+        return (
+            <Layout currentPage="/admin">
+                <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Ładowanie danych...</span>
+                </div>
+            </Layout>
+        );
+    }
+
+    if (error) {
+        return (
+            <Layout currentPage="/admin">
+                <div className="flex flex-col justify-center items-center h-64">
+                    <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <Button onClick={loadDashboardData}>Spróbuj ponownie</Button>
+                </div>
+            </Layout>
+        );
+    }
 
     return (
         <Layout currentPage="/admin">
@@ -118,7 +246,7 @@ export default function AdminDashboard(){
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold">{stats.openTickets}</span>
                                     <span className="text-xs text-gray-500">
-                                        ({((stats.openTickets / stats.totalTickets) * 100).toFixed(0)}%)
+                                        ({calculatePercentage(stats.openTickets, stats.totalTickets)}%)
                                     </span>
                                 </div>
                             </div>
@@ -130,7 +258,7 @@ export default function AdminDashboard(){
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold">{stats.inProgressTickets}</span>
                                     <span className="text-xs text-gray-500">
-                                        ({((stats.inProgressTickets / stats.totalTickets) * 100).toFixed(0)}%)
+                                        ({calculatePercentage(stats.inProgressTickets, stats.totalTickets)}%)
                                     </span>
                                 </div>
                             </div>
@@ -142,7 +270,7 @@ export default function AdminDashboard(){
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold">{stats.resolvedTickets}</span>
                                     <span className="text-xs text-gray-500">
-                                        ({((stats.resolvedTickets / stats.totalTickets) * 100).toFixed(0)}%)
+                                        ({calculatePercentage(stats.resolvedTickets, stats.totalTickets)}%)
                                     </span>
                                 </div>
                             </div>
@@ -151,11 +279,11 @@ export default function AdminDashboard(){
                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                                     <div 
                                         className="bg-green-500 h-2.5 rounded-full" 
-                                        style={{ width: `${(stats.resolvedTickets / stats.totalTickets) * 100}%` }}
+                                        style={{ width: `${stats.totalTickets > 0 ? (stats.resolvedTickets / stats.totalTickets) * 100 : 0}%` }}
                                     ></div>
                                 </div>
                                 <p className="text-xs text-gray-500 mt-2 text-center">
-                                    Skuteczność rozwiązywania: {((stats.resolvedTickets / stats.totalTickets) * 100).toFixed(1)}%
+                                    Skuteczność rozwiązywania: {stats.totalTickets > 0 ? ((stats.resolvedTickets / stats.totalTickets) * 100).toFixed(1) : '0.0'}%
                                 </p>
                             </div>
                         </CardContent>
@@ -171,7 +299,7 @@ export default function AdminDashboard(){
                                 <div className="flex items-center gap-2">
                                     <Badge className="bg-red-500 text-white">Administrator</Badge>
                                 </div>
-                                <span className="font-semibold">1</span>
+                                <span className="font-semibold">{stats.admins}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -207,43 +335,50 @@ export default function AdminDashboard(){
                     <CardHeader>
                         <div className="flex justify-between items-center">
                             <div>
-                                <CardTitle>Ostatnia aktywność</CardTitle>
-                                <CardDescription>Najnowsze zdarzenia w systemie</CardDescription>
+                                <CardTitle>Ostatnie zgłoszenia</CardTitle>
+                                <CardDescription>Najnowsze zgłoszenia w systemie</CardDescription>
                             </div>
-                            <Button variant="outline" size="sm">
-                                Zobacz wszystkie
-                            </Button>
+                            <Link to="/tickets">
+                                <Button variant="outline" size="sm">
+                                    Zobacz wszystkie
+                                </Button>
+                            </Link>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {recentActivity.map((activity) => (
-                                <div key={activity.id} className="flex items-start gap-4 pb-4 border-b last:border-0 last:pb-0">
-                                    <div className={`p-2 rounded-full ${
-                                        activity.type === 'alert' ? 'bg-red-100' :
-                                        activity.type === 'user' ? 'bg-blue-100' : 'bg-green-100'
-                                    }`}>
-                                        {activity.type === 'alert' ? (
-                                            <AlertCircle className="h-4 w-4 text-red-600" />
-                                        ) : activity.type === 'user' ? (
-                                            <Users className="h-4 w-4 text-blue-600" />
-                                        ) : (
-                                            <CheckCircle className="h-4 w-4 text-green-600" />
-                                        )}
+                            {recentTickets.length > 0 ? (
+                                recentTickets.map((ticket) => (
+                                    <div 
+                                        key={ticket.id} 
+                                        className="flex items-start gap-4 pb-4 border-b last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-2 rounded"
+                                        onClick={() => navigate(`/tickets/${ticket.id}`)}
+                                    >
+                                        <div className={`p-2 rounded-full ${
+                                            ticket.priority === 'Critical' ? 'bg-red-100' :
+                                            ticket.priority === 'High' ? 'bg-orange-100' : 'bg-blue-100'
+                                        }`}>
+                                            {ticket.priority === 'Critical' ? (
+                                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                            ) : (
+                                                <Ticket className="h-4 w-4 text-blue-600" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">
+                                                {ticket.title}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                {ticket.customerName} • {getStatusLabel(ticket.status)} • 
+                                                <span className={getPriorityColor(ticket.priority)}> {ticket.priority}</span> • 
+                                                {new Date(ticket.createdAt).toLocaleDateString('pl-PL')}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            {activity.action}
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                            {activity.user && `${activity.user} • `}
-                                            {activity.agent && `${activity.agent} • `}
-                                            {activity.ticket && `${activity.ticket} • `}
-                                            {activity.time}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <p className="text-center text-gray-500 py-4">Brak zgłoszeń</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
