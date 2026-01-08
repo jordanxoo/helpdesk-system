@@ -4,8 +4,7 @@ using Shared.HttpClients;
 using Shared.DTOs;
 using NotificationService.Services;
 using Shared.Models;
-
-
+using NotificationService.Templates;
 
 namespace NotificationService.Consumers;
 
@@ -69,6 +68,21 @@ public class TicketAssignedConsumer : IConsumer<TicketAssignedEvent>
 
             await _signalRService.SendNotificationToUser(message.CustomerId.ToString(),customerNotification);
 
+            // Wyślij email do customera
+            var customerEmailBody = EmailTemplates.TicketAssigned(
+                firstName: customer.FirstName,
+                ticketId: message.TicketId,
+                title: $"Ticket #{message.TicketId}",
+                agentName: agent.FullName
+            );
+
+            await _emailService.SendEmailAsync(
+                to: customer.Email,
+                subject: $"👤 Ticket #{message.TicketId} przypisany do agenta",
+                body: customerEmailBody,
+                isHtml: true
+            );
+
             _logger.LogInformation("Sent notification to customer {customerId} about ticket assignment",message.TicketId);
 
             var agentNotification = new TicketAssignedNotification
@@ -91,6 +105,22 @@ public class TicketAssignedConsumer : IConsumer<TicketAssignedEvent>
 
             await _signalRService.SendNotificationToUser(message.AgentId.ToString(),
             agentNotification);
+
+            // Wyślij email do agenta
+            var agentEmailBody = EmailTemplates.TicketAssignedAgent(
+                firstName: agent.FirstName,
+                ticketId: message.TicketId,
+                title: $"Ticket #{message.TicketId}",
+                customerName: customer.FullName,
+                priority: "Normal"
+            );
+
+            await _emailService.SendEmailAsync(
+                to: agent.Email,
+                subject: $"📥 Nowy ticket przypisany: #{message.TicketId}",
+                body: agentEmailBody,
+                isHtml: true
+            );
 
             _logger.LogInformation("Sent notification to agent {agentId} about new assigned Ticket {ticketid}",
             message.AgentId,message.TicketId);

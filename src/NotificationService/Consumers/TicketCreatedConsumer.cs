@@ -45,8 +45,10 @@ public class TicketCreatedConsumer : IConsumer<TicketCreatedEvent>
                 return;
             }
             await _emailService.SendTicketCreatedNotificationAsync(
-                customer.Email,message.TicketId.ToString(),
-                $"Nowe zgłoszenie #{message.TicketId}"
+                customerEmail: customer.Email,
+                firstName: customer.FirstName,
+                ticketId: message.TicketId.ToString(),
+                title: $"Ticket #{message.TicketId}"
             );
 
             var notification = new TicketCreatedNotification

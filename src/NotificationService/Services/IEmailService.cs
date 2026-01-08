@@ -17,7 +17,7 @@ public interface IEmailService
     /// <summary>
     /// Send ticket created notification.
     /// </summary>
-    Task SendTicketCreatedNotificationAsync(string customerEmail, string ticketId, string title);
+    Task SendTicketCreatedNotificationAsync(string customerEmail, string firstName, string ticketId, string title);
     
     /// <summary>
     /// Send ticket assigned notification.
@@ -37,5 +37,5 @@ public interface IEmailService
     Task SendWelcomeEmailAsync(string email, string firstName);
     
     Task SendLoginEmailAsync(string email);
-    Task SendTicketStatusChangedEmailAsync(string email,string ticketId,string Title);
+    Task SendTicketStatusChangedEmailAsync(string email, string firstName, string ticketId, string title, string oldStatus, string newStatus);
 }

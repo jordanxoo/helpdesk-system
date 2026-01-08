@@ -3,6 +3,7 @@ using System.Net.Mail;
 using System.Web;
 using Microsoft.Extensions.Options;
 using NotificationService.Configuration;
+using NotificationService.Templates;
 
 namespace NotificationService.Services;
 
@@ -58,21 +59,19 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendTicketCreatedNotificationAsync(string customerEmail, string ticketId, string title)
+    public async Task SendTicketCreatedNotificationAsync(string customerEmail, string firstName, string ticketId, string title)
     {
-        var subject = $"Ticket Created: {title}";
-        var body = $@"
-            <h2>Your Support Ticket Has Been Created</h2>
-            <p>Thank you for contacting our support team.</p>
-            <p><strong>Ticket ID:</strong> {HttpUtility.HtmlEncode(ticketId)}</p>
-            <p><strong>Title:</strong> {HttpUtility.HtmlEncode(title)}</p>
-            <p>We will review your request and get back to you as soon as possible.</p>
-            <p>You can track the status of your ticket in your dashboard.</p>
-            <br/>
-            <p>Best regards,<br/>Helpdesk Support Team</p>
-        ";
+        var subject = $"✅ Ticket został utworzony: {title}";
 
-        await SendEmailAsync(customerEmail, subject, body);
+        var body = EmailTemplates.TicketCreated(
+            firstName: firstName,
+            ticketId: Guid.Parse(ticketId),
+            title: title,
+            priority: "Normal", // Domyślny priorytet
+            category: "Support" // Domyślna kategoria
+        );
+
+        await SendEmailAsync(customerEmail, subject, body, isHtml: true);
     }
 
     public async Task SendTicketAssignedNotificationAsync(string agentEmail, string ticketId, string title)
@@ -147,16 +146,18 @@ public class EmailService : IEmailService
         await SendEmailAsync(email, subject, body);
     }
 
-    public async Task SendTicketStatusChangedEmailAsync(string email,string ticketId, string Title)
+    public async Task SendTicketStatusChangedEmailAsync(string email, string firstName, string ticketId, string title, string oldStatus, string newStatus)
     {
-        var subject = Title;
-        var body = $@"
-        <h2>Zmiana statusu zgłoszenia</h2>
-        <p>Zauważono zmianę statusu złgoszenia {ticketId} dla użytkownika {email} w systemie Helpdesk.</p>
-        <p>Data: {DateTime.UtcNow} (UTC)</p>
-        <p>Miłego dnia, system Helpdesk.</p>
-        ";
+        var subject = $"📝 Status zmieniony: {title}";
 
-        await SendEmailAsync(email, subject, body);
+        var body = EmailTemplates.TicketStatusChanged(
+            firstName: firstName,
+            ticketId: Guid.Parse(ticketId),
+            title: title,
+            oldStatus: oldStatus,
+            newStatus: newStatus
+        );
+
+        await SendEmailAsync(email, subject, body, isHtml: true);
     }
 }

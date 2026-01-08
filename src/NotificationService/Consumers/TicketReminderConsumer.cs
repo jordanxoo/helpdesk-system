@@ -3,6 +3,7 @@ using Shared.Events;
 using Shared.DTOs;
 using NotificationService.Services;
 using Shared.HttpClients;
+using NotificationService.Templates;
 
 namespace NotificationService.Consumers;
 
@@ -45,56 +46,13 @@ public class TicketReminderConsumer : IConsumer<TicketReminderEvent>
             }
 
             // Wysłanie EMAIL przypomnienia
-            var emailBody = $@"
-                <html>
-                <head>
-                    <style>
-                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                        .header {{ background-color: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
-                        .content {{ background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }}
-                        .warning {{ background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; }}
-                        .button {{ display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-                        .footer {{ text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }}
-                    </style>
-                </head>
-                <body>
-                    <div class='container'>
-                        <div class='header'>
-                            <h1>⏰ Przypomnienie o Tickecie</h1>
-                        </div>
-                        <div class='content'>
-                            <p>Witaj <strong>{customer.FirstName}</strong>!</p>
-                            
-                            <div class='warning'>
-                                <h3>🎫 {reminder.Title}</h3>
-                                <p>Twój ticket oczekuje na odpowiedź już <strong>{reminder.HoursSinceCreated} godzin</strong> ({reminder.HoursSinceCreated / 24:F1} dni).</p>
-                            </div>
-                            
-                            <p>Ticket ID: <strong>#{reminder.TicketId}</strong></p>
-                            <p>Status: <strong>Open</strong></p>
-                            <p>Utworzony: <strong>{reminder.HoursSinceCreated}h temu</strong></p>
-                            
-                            <p>Prosimy o:</p>
-                            <ul>
-                                <li>Dodanie komentarza z aktualizacją</li>
-                                <li>Sprawdzenie czy ticket nadal jest aktualny</li>
-                                <li>Zamknięcie ticketa jeśli problem został rozwiązany</li>
-                            </ul>
-                            
-                            <a href='http://localhost:5173/tickets/{reminder.TicketId}' class='button'>
-                                Zobacz Ticket
-                            </a>
-                            
-                            <div class='footer'>
-                                <p>To jest automatyczne przypomnienie wysłane przez system Helpdesk.</p>
-                                <p>Jeśli ticket nie jest już aktualny, możesz go zamknąć.</p>
-                            </div>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            ";
+            var emailBody = EmailTemplates.TicketReminder(
+                firstName: customer.FirstName,
+                title: reminder.Title,
+                ticketId: reminder.TicketId,
+                hoursSinceCreated: reminder.HoursSinceCreated,
+                daysSinceCreated: reminder.HoursSinceCreated / 24.0
+            );
 
             await _emailService.SendEmailAsync(
                 to: customer.Email,
@@ -129,14 +87,18 @@ public class TicketReminderConsumer : IConsumer<TicketReminderEvent>
                 var agent = await _userServiceClient.GetUserAsync(reminder.AgentId.Value);
                 if (agent != null)
                 {
+                    var agentEmailBody = EmailTemplates.TicketReminderAgent(
+                        firstName: agent.FirstName,
+                        title: reminder.Title,
+                        ticketId: reminder.TicketId,
+                        hoursSinceCreated: reminder.HoursSinceCreated,
+                        customerName: customer.FullName
+                    );
+
                     await _emailService.SendEmailAsync(
                         to: agent.Email,
                         subject: $"⏰ Przypomnienie: Ticket #{reminder.TicketId} wymaga uwagi",
-                        body: $@"
-                            <p>Witaj {agent.FirstName}!</p>
-                            <p>Ticket <strong>{reminder.Title}</strong> jest przypisany do Ciebie i nie ma aktywności od {reminder.HoursSinceCreated} godzin.</p>
-                            <p><a href='http://localhost:5173/tickets/{reminder.TicketId}'>Zobacz ticket</a></p>
-                        ",
+                        body: agentEmailBody,
                         isHtml: true
                     );
 

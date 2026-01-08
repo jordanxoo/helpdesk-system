@@ -3,6 +3,7 @@ using Shared.Events;
 using Shared.DTOs;
 using Shared.HttpClients;
 using NotificationService.Services;
+using NotificationService.Templates;
 
 namespace NotificationService.Consumers;
 
@@ -101,12 +102,24 @@ public class TicketCommentAddedConsumer : IConsumer<CommentAddedEvent>
 
         await _signalRService.SendNotificationToUser(
             customer.Id.ToString(),
-            notification);   
+            notification);
 
-        if(ShouldSendEmailForComment(message.Content))
-        {
-            // await _emailService.SendNewCommentEmailAsync(customer.Email);
-        }
+        // Wyślij email do customera o nowym komentarzu
+        var emailBody = EmailTemplates.CommentAdded(
+            firstName: customer.FirstName,
+            ticketId: message.TicketId,
+            title: $"Ticket #{message.TicketId}",
+            agentName: agent.FullName,
+            commentPreview: commentPreview
+        );
+
+        await _emailService.SendEmailAsync(
+            to: customer.Email,
+            subject: $"💬 Nowa odpowiedź w tickecie #{message.TicketId}",
+            body: emailBody,
+            isHtml: true
+        );
+
         _logger.LogInformation(
             "Sent notification to customer {customerId} about new comment from agent {agentId}"
             ,customer.Id,agent.Id

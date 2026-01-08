@@ -3,6 +3,7 @@ using Shared.Events;
 using Shared.HttpClients;
 using Shared.DTOs;
 using NotificationService.Services;
+using NotificationService.Templates;
 
 namespace NotificationService.Consumers;
 
@@ -98,14 +99,17 @@ public class TicketStatusChangedConsumer : IConsumer<TicketStatusChangedEvent>
                     agentNotification);
             }
 
-          
+            // Wyślij email przy ważnych zmianach statusu
             if (ShouldSendEmail(message.NewStatus))
             {
-                string Title = "Zmiana statusu zgłoszenia";
-
-
-
-                 await _emailService.SendTicketStatusChangedEmailAsync(message.CustomerId.ToString(),message.TicketId.ToString(),Title);
+                await _emailService.SendTicketStatusChangedEmailAsync(
+                    email: customer.Email,
+                    firstName: customer.FirstName,
+                    ticketId: message.TicketId.ToString(),
+                    title: $"Ticket #{message.TicketId}",
+                    oldStatus: message.OldStatus,
+                    newStatus: message.NewStatus
+                );
             }
 
             _logger.LogInformation(
