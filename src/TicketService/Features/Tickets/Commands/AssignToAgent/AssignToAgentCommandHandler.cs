@@ -1,6 +1,8 @@
 using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Shared.Caching;
 using Shared.DTOs;
 using Shared.Events;
 using Shared.Exceptions;
@@ -19,14 +21,16 @@ public class AssignToAgentCommandHandler : IRequestHandler<AssignToAgentCommand,
     private readonly ILogger<AssignToAgentCommandHandler> _logger;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IUserServiceClient _userServiceClient;
+    private readonly IDistributedCache _cache;
 
     public AssignToAgentCommandHandler(TicketDbContext dbContext, ILogger<AssignToAgentCommandHandler> logger
-    ,IPublishEndpoint publishEndpoint, IUserServiceClient userServiceClient)
+    ,IPublishEndpoint publishEndpoint, IUserServiceClient userServiceClient, IDistributedCache cache)
     {
         _dbContext = dbContext;
         _logger = logger;
         _publishEndpoint = publishEndpoint;
         _userServiceClient = userServiceClient;
+        _cache = cache;
     }
 
     public async Task<TicketDto> Handle(AssignToAgentCommand command, CancellationToken ct)
@@ -87,6 +91,10 @@ public class AssignToAgentCommandHandler : IRequestHandler<AssignToAgentCommand,
         },ct);
 
         await _dbContext.SaveChangesAsync(ct);
+
+        // Invalidate cache
+        await _cache.RemoveAsync(CacheKeys.Ticket(ticket.Id), ct);
+        await _cache.RemoveAsync($"ticket:{ticket.Id}:history", ct);
 
         _logger.LogInformation("Ticket {ticketId} assigned to agent {agentId}",ticket.Id,command.AgentId);
 
