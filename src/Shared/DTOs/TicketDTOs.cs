@@ -29,6 +29,14 @@ public record ChangeStatusRequest(
     string NewStatus
 );
 
+public record ChangePriorityRequest(
+    string NewPriority
+);
+
+public record AssignTicketRequest(
+    Guid? AgentId  // null = unassign
+);
+
 
 public record TicketDto(
     Guid Id,
@@ -38,7 +46,9 @@ public record TicketDto(
     string Priority,
     string Category,
     Guid CustomerId,
+    string? CustomerName,
     Guid? AssignedAgentId,
+    string? AssignedAgentName,
     Guid? OrganizationId,
     Guid? SlaId,
     DateTime CreatedAt,
@@ -52,6 +62,8 @@ public record TicketDto(
 public record CommentDto(
     Guid Id,
     Guid UserId,
+    string? UserName,
+    string? UserRole,
     string Content,
     DateTime CreatedAt,
     bool IsInternal

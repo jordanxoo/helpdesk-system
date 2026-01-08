@@ -29,9 +29,9 @@ export const userService = {
         return response.data;
     },
 
-    async updateProfile(userId: string, data: UpdateProfileRequest): Promise<User>
+    async updateProfile(data: UpdateProfileRequest): Promise<User>
     {
-        const response = await api.put<User>(`/api/users/${userId}`,data);
+        const response = await api.put<User>(`/api/users/me`, data);
         return response.data;
     }
 }

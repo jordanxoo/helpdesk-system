@@ -14,7 +14,9 @@ public interface ITicketService
     Task<TicketDto> CreateAsync(Guid userId, string userRole, CreateTicketRequest request);
     Task<TicketDto> UpdateAsync(Guid id, UpdateTicketRequest request);
     Task<TicketDto> AssignToAgentAsync(Guid ticketId, Guid agentId);
+    Task<TicketDto> UnassignAgentAsync(Guid ticketId);
     Task<TicketDto> ChangeStatusAsync(Guid ticketId, string newStatus);
+    Task<TicketDto> ChangePriorityAsync(Guid ticketId, string newPriority);
     Task DeleteAsync(Guid id);
 
     //operacje na komentarzach

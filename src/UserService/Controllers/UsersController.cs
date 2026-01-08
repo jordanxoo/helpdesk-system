@@ -170,6 +170,43 @@ public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest req
         return Ok(user);
     }
 
+    /// <summary>
+    /// Update current user's own profile data.
+    /// Users can update: FirstName, LastName, PhoneNumber
+    /// Cannot change: Role, IsActive, OrganizationId (admin only)
+    /// </summary>
+    [HttpPut("me")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserDto>> UpdateMyProfile([FromBody] UpdateProfileRequest request)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "Invalid user ID in token" });
+        }
+
+        _logger.LogInformation("PUT /api/users/me - UserId: {UserId}", userId);
+
+        // Use UpdateUserCommand but only allow profile fields
+        var command = new UpdateUserCommand
+        {
+            UserId = userId,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            PhoneNumber = request.PhoneNumber,
+            // These fields cannot be changed by user themselves
+            Role = null,
+            OrganizationId = null,
+            IsActive = null
+        };
+
+        var user = await _mediator.Send(command);
+        return Ok(user);
+    }
+
     [HttpPut("{id}/organization")]
     [Authorize(Roles = UserRoles.Administrator)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]

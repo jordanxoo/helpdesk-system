@@ -53,3 +53,15 @@ public record CommentAddedEvent : BaseEvent
     public Guid CustomerId { get; init; }
     public bool IsInternal { get; init; }
 }
+
+/// <summary>
+/// Event published when a ticket priority changes.
+/// </summary>
+public record TicketPriorityChangedEvent : BaseEvent
+{
+    public Guid TicketId { get; init; }
+    public string OldPriority { get; init; } = string.Empty;
+    public string NewPriority { get; init; } = string.Empty;
+    public Guid CustomerId { get; init; }
+    public Guid? AgentId { get; init; }
+}

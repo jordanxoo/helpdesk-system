@@ -157,7 +157,7 @@ public class TicketServiceImpl : ITicketService
     {
         _logger.LogInformation("Fetching ticket with id: {TicketId}", id);
         var ticket = await _repository.GetByIdAsync(id, includeComments: true);
-        return ticket != null ? MapToDto(ticket) : null;
+        return ticket != null ? await MapToDtoWithUserInfoAsync(ticket) : null;
     }
 
     public async Task<TicketListResponse> GetAllAsync(int page, int pageSize)
@@ -165,9 +165,10 @@ public class TicketServiceImpl : ITicketService
         _logger.LogInformation("Fetching all tickets - Page: {Page}, PageSize: {PageSize}", page, pageSize);
         var tickets = await _repository.GetAllAsync(page, pageSize);
         var totalCount = await _repository.GetTotalCountAsync(null, null, null, null, null, null);
+        var ticketDtos = await MapTicketsToListDtosAsync(tickets);
 
         return new TicketListResponse(
-            Tickets: tickets.Select(MapToDto).ToList(),
+            Tickets: ticketDtos,
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
@@ -198,8 +199,10 @@ public class TicketServiceImpl : ITicketService
             assignedAgentId: filter.AssignedAgentId
         );
 
+        var ticketDtos = await MapTicketsToListDtosAsync(tickets);
+
         return new TicketListResponse(
-            Tickets: tickets.Select(MapToDto).ToList(),
+            Tickets: ticketDtos,
             TotalCount: totalCount,
             Page: filter.Page,
             PageSize: filter.PageSize
@@ -212,9 +215,10 @@ public class TicketServiceImpl : ITicketService
 
         var tickets = await _repository.GetByCustomerIdAsync(customerId, page, pageSize);
         var totalCount = await _repository.GetTotalCountAsync(null, null, null, null, customerId, null);
+        var ticketDtos = await MapTicketsToListDtosAsync(tickets);
 
         return new TicketListResponse(
-            Tickets: tickets.Select(MapToDto).ToList(),
+            Tickets: ticketDtos,
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
@@ -227,9 +231,10 @@ public class TicketServiceImpl : ITicketService
 
         var tickets = await _repository.GetByAgentIdAsync(agentId, page, pageSize);
         var totalCount = await _repository.GetTotalCountAsync(null, null, null, null, null, agentId);
+        var ticketDtos = await MapTicketsToListDtosAsync(tickets);
 
         return new TicketListResponse(
-            Tickets: tickets.Select(MapToDto).ToList(),
+            Tickets: ticketDtos,
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
@@ -423,95 +428,159 @@ public class TicketServiceImpl : ITicketService
     {
         _logger.LogInformation("Assigning ticket {TicketId} to agent {AgentId}", ticketId, agentId);
 
-        var ticket = await _repository.GetByIdAsync(ticketId, includeComments: false);
+        var ticket = await _repository.GetByIdAsync(ticketId, includeComments: true);
         if (ticket == null)
         {
             throw new NotFoundException("Ticket", ticketId);
         }
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        try
+
+        var oldAgentId = ticket.AssignedAgentId?.ToString();
+        ticket.AssignedAgentId = agentId;
+        ticket.Status = TicketStatus.Open;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        await _repository.UpdateAsync(ticket);
+
+        _logger.LogInformation("Ticket assigned successfully");
+
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.Assigned,
+            fieldName: "AssignedAgentId",
+            oldValue: oldAgentId,
+            newValue: agentId.ToString());
+
+        await _publishEndpoint.Publish(new TicketAssignedEvent
         {
-            var oldAgentId = ticket.AssignedAgentId?.ToString();
-            ticket.AssignedAgentId = agentId;
-            ticket.Status = TicketStatus.Open;
+            TicketId = ticketId,
+            AgentId  = agentId,
+            CustomerId = ticket.CustomerId,
+            Timestamp = DateTime.UtcNow
+        });
 
-            await _repository.UpdateAsync(ticket);
+        await _dbContext.SaveChangesAsync();
+        return await MapToDtoWithUserInfoAsync(ticket);
+    }
 
-            _logger.LogInformation("Ticket assigned successfully");
+    public async Task<TicketDto> UnassignAgentAsync(Guid ticketId)
+    {
+        _logger.LogInformation("Unassigning agent from ticket {TicketId}", ticketId);
 
-            // Audit log
-            await AddAuditLogAsync(
-                ticketId,
-                AuditAction.Assigned,
-                fieldName: "AssignedAgentId",
-                oldValue: oldAgentId,
-                newValue: agentId.ToString());
-
-            await _publishEndpoint.Publish(new TicketAssignedEvent
-            {
-                TicketId = ticketId,
-                AgentId  = agentId,
-                CustomerId = ticket.CustomerId,
-                Timestamp = DateTime.UtcNow
-            });
-
-            await _dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return MapToDto(ticket);
-        }catch
+        var ticket = await _repository.GetByIdAsync(ticketId, includeComments: true);
+        if (ticket == null)
         {
-            await transaction.RollbackAsync();
-            throw;
+            throw new NotFoundException("Ticket", ticketId);
         }
+
+        var oldAgentId = ticket.AssignedAgentId?.ToString();
+        ticket.AssignedAgentId = null;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        await _repository.UpdateAsync(ticket);
+
+        _logger.LogInformation("Agent unassigned from ticket successfully");
+
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.Assigned,
+            fieldName: "AssignedAgentId",
+            oldValue: oldAgentId,
+            newValue: null,
+            description: "Agent unassigned from ticket");
+
+        await _dbContext.SaveChangesAsync();
+        return await MapToDtoWithUserInfoAsync(ticket);
     }
 
     public async Task<TicketDto> ChangeStatusAsync(Guid ticketId, string newStatus)
     {
         _logger.LogInformation("Changing ticket {TicketId} status to {NewStatus}", ticketId, newStatus);
 
-        var ticket = await _repository.GetByIdAsync(ticketId, false);
+        var ticket = await _repository.GetByIdAsync(ticketId, true); // include comments for user info
         if (ticket == null) throw new NotFoundException("Ticket", ticketId);
 
         if (!Enum.TryParse<TicketStatus>(newStatus, out var status))
         {
             throw new BadRequestException($"Invalid status: {newStatus}");
         }
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        try
+
+        var oldStatus = ticket.Status.ToString();
+        ticket.Status = status;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        if (status == TicketStatus.Resolved || status == TicketStatus.Closed)
         {
-            var oldStatus = ticket.Status.ToString();
-            ticket.Status = status;
-
-            await _repository.UpdateAsync(ticket);
-            _logger.LogInformation("Ticket status changed successfully");
-
-            // Audit log
-            await AddAuditLogAsync(
-                ticketId,
-                AuditAction.StatusChanged,
-                fieldName: "Status",
-                oldValue: oldStatus,
-                newValue: status.ToString());
-
-            await _publishEndpoint.Publish(new TicketStatusChangedEvent
-            {
-                TicketId = ticketId,
-                OldStatus = oldStatus,
-                NewStatus = status.ToString(),
-                CustomerId = ticket.CustomerId,
-                AgentId = ticket.AssignedAgentId,
-                Timestamp = DateTime.UtcNow
-            });
-
-            await _dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return MapToDto(ticket);
-        }catch
-        {
-            await transaction.RollbackAsync();
-            throw;
+            ticket.ResolvedAt = DateTime.UtcNow;
         }
+
+        await _repository.UpdateAsync(ticket);
+        _logger.LogInformation("Ticket status changed successfully");
+
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.StatusChanged,
+            fieldName: "Status",
+            oldValue: oldStatus,
+            newValue: status.ToString());
+
+        await _publishEndpoint.Publish(new TicketStatusChangedEvent
+        {
+            TicketId = ticketId,
+            OldStatus = oldStatus,
+            NewStatus = status.ToString(),
+            CustomerId = ticket.CustomerId,
+            AgentId = ticket.AssignedAgentId,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await _dbContext.SaveChangesAsync();
+        return await MapToDtoWithUserInfoAsync(ticket);
     }
+
+    public async Task<TicketDto> ChangePriorityAsync(Guid ticketId, string newPriority)
+    {
+        _logger.LogInformation("Changing ticket {TicketId} priority to {NewPriority}", ticketId, newPriority);
+
+        var ticket = await _repository.GetByIdAsync(ticketId, true); // include comments for user info
+        if (ticket == null) throw new NotFoundException("Ticket", ticketId);
+
+        if (!Enum.TryParse<TicketPriority>(newPriority, out var priority))
+        {
+            throw new BadRequestException($"Invalid priority: {newPriority}");
+        }
+
+        var oldPriority = ticket.Priority.ToString();
+        ticket.Priority = priority;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        await _repository.UpdateAsync(ticket);
+        _logger.LogInformation("Ticket priority changed successfully");
+
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.PriorityChanged,
+            fieldName: "Priority",
+            oldValue: oldPriority,
+            newValue: priority.ToString());
+
+        await _publishEndpoint.Publish(new TicketPriorityChangedEvent
+        {
+            TicketId = ticketId,
+            OldPriority = oldPriority,
+            NewPriority = priority.ToString(),
+            CustomerId = ticket.CustomerId,
+            AgentId = ticket.AssignedAgentId,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await _dbContext.SaveChangesAsync();
+        return await MapToDtoWithUserInfoAsync(ticket);
+    }
+
     public async Task DeleteAsync(Guid id)
     {
         _logger.LogInformation("Deleting ticket: {TicketId}", id);
@@ -536,47 +605,38 @@ public class TicketServiceImpl : ITicketService
             throw new NotFoundException("Ticket", ticketId);
         }
 
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        try
+        var comment = new TicketComment
         {
-            var comment = new TicketComment
-            {
-                TicketId = ticketId,
-                UserId = userId,
-                Content = request.Content,
-                IsInternal = request.IsInternal
-            };
+            TicketId = ticketId,
+            UserId = userId,
+            Content = request.Content,
+            IsInternal = request.IsInternal
+        };
 
-            await _repository.AddCommentAsync(comment);
-            _logger.LogInformation("Comment added successfully");
+        await _repository.AddCommentAsync(comment);
+        _logger.LogInformation("Comment added successfully");
 
-            // Audit log
-            await AddAuditLogAsync(
-                ticketId,
-                AuditAction.CommentAdded,
-                description: request.IsInternal ? "Internal comment added" : "Comment added");
+        // Audit log
+        await AddAuditLogAsync(
+            ticketId,
+            AuditAction.CommentAdded,
+            description: request.IsInternal ? "Internal comment added" : "Comment added");
 
-            await _publishEndpoint.Publish(new CommentAddedEvent
-            {
-                TicketId =ticketId,
-                CommentId = comment.Id,
-                UserId = comment.UserId,
-                Content = comment.Content,
-                CustomerId = ticket.CustomerId,
-                IsInternal = comment.IsInternal,
-                Timestamp =DateTime.UtcNow
-            });
-
-            await _dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-            var updatedTicket = await _repository.GetByIdAsync(ticketId,true);
-
-            return MapToDto(updatedTicket!);
-        }catch
+        await _publishEndpoint.Publish(new CommentAddedEvent
         {
-            await transaction.RollbackAsync();
-            throw;
-        }
+            TicketId = ticketId,
+            CommentId = comment.Id,
+            UserId = comment.UserId,
+            Content = comment.Content,
+            CustomerId = ticket.CustomerId,
+            IsInternal = comment.IsInternal,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await _dbContext.SaveChangesAsync();
+        var updatedTicket = await _repository.GetByIdAsync(ticketId, true);
+
+        return await MapToDtoWithUserInfoAsync(updatedTicket!);
     }
 
     public async Task<List<TicketAuditLogDto>> GetHistoryAsync(Guid ticketId)
@@ -619,7 +679,9 @@ public class TicketServiceImpl : ITicketService
             Priority: ticket.Priority.ToString(),
             Category: ticket.Category.ToString(),
             CustomerId: ticket.CustomerId,
+            CustomerName: null,
             AssignedAgentId: ticket.AssignedAgentId,
+            AssignedAgentName: null,
             OrganizationId: ticket.OrganizationId,
             SlaId: ticket.SlaId,
             CreatedAt: ticket.CreatedAt,
@@ -628,6 +690,8 @@ public class TicketServiceImpl : ITicketService
             Comments: [.. ticket.Comments.Select(c => new CommentDto(
                 Id: c.Id,
                 UserId: c.UserId,
+                UserName: null,
+                UserRole: null,
                 Content: c.Content,
                 CreatedAt: c.CreatedAt,
                 IsInternal: c.IsInternal
@@ -653,6 +717,151 @@ public class TicketServiceImpl : ITicketService
 
             })]
         );
+    }
+
+    private async Task<TicketDto> MapToDtoWithUserInfoAsync(Ticket ticket)
+    {
+        // Get unique user IDs from comments + customer + agent
+        var userIds = ticket.Comments.Select(c => c.UserId).Distinct().ToList();
+        userIds.Add(ticket.CustomerId);
+        if (ticket.AssignedAgentId.HasValue)
+        {
+            userIds.Add(ticket.AssignedAgentId.Value);
+        }
+        userIds = userIds.Distinct().ToList();
+        
+        // Fetch user info for all users
+        var userInfoCache = new Dictionary<Guid, (string? Name, string? Role)>();
+        foreach (var userId in userIds)
+        {
+            try
+            {
+                var userDto = await _userServiceClient.GetUserAsync(userId);
+                if (userDto != null)
+                {
+                    userInfoCache[userId] = ($"{userDto.FirstName} {userDto.LastName}", userDto.Role);
+                }
+                else
+                {
+                    userInfoCache[userId] = ("Unknown User", null);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch user info for {UserId}", userId);
+                userInfoCache[userId] = ("Unknown User", null);
+            }
+        }
+
+        // Get customer and agent names
+        var customerName = userInfoCache.TryGetValue(ticket.CustomerId, out var customerInfo) 
+            ? customerInfo.Name : null;
+        string? assignedAgentName = null;
+        if (ticket.AssignedAgentId.HasValue && userInfoCache.TryGetValue(ticket.AssignedAgentId.Value, out var agentInfo))
+        {
+            assignedAgentName = agentInfo.Name;
+        }
+
+        return new TicketDto(
+            Id: ticket.Id,
+            Title: ticket.Title,
+            Description: ticket.Description,
+            Status: ticket.Status.ToString(),
+            Priority: ticket.Priority.ToString(),
+            Category: ticket.Category.ToString(),
+            CustomerId: ticket.CustomerId,
+            CustomerName: customerName,
+            AssignedAgentId: ticket.AssignedAgentId,
+            AssignedAgentName: assignedAgentName,
+            OrganizationId: ticket.OrganizationId,
+            SlaId: ticket.SlaId,
+            CreatedAt: ticket.CreatedAt,
+            UpdatedAt: ticket.UpdatedAt,
+            ResolvedAt: ticket.ResolvedAt,
+            Comments: [.. ticket.Comments.Select(c => {
+                var (userName, userRole) = userInfoCache.TryGetValue(c.UserId, out var info) 
+                    ? info 
+                    : ("Unknown User", (string?)null);
+                return new CommentDto(
+                    Id: c.Id,
+                    UserId: c.UserId,
+                    UserName: userName,
+                    UserRole: userRole,
+                    Content: c.Content,
+                    CreatedAt: c.CreatedAt,
+                    IsInternal: c.IsInternal
+                );
+            })],
+
+            Attachment: [.. ticket.Attachments.Select(a =>
+            {   
+                var internalUrl = _fileStorageService.GetPresignedUrl(a.StoragePath);
+                var browserUrl = internalUrl.Replace("minio:9000","localhost:9000");
+
+                return new TicketAttachmentDto(
+                    id: a.Id,
+                    FileName: a.FileName,
+                    ContentType: a.ContentType,
+                    FileSizeBytes: a.FileSizeBytes,
+                    DownloadUrl: browserUrl,
+                    UploadedAt: DateTime.UtcNow
+                );
+            })]
+        );
+    }
+
+    /// <summary>
+    /// Efficiently maps a list of tickets to DTOs with user names by batch fetching user info
+    /// </summary>
+    private async Task<List<TicketDto>> MapTicketsToListDtosAsync(IEnumerable<Ticket> tickets)
+    {
+        var ticketList = tickets.ToList();
+        
+        // Collect all unique user IDs (customers and assigned agents)
+        var userIds = ticketList
+            .Select(t => t.CustomerId)
+            .Union(ticketList.Where(t => t.AssignedAgentId.HasValue).Select(t => t.AssignedAgentId!.Value))
+            .Distinct()
+            .ToList();
+
+        // Batch fetch user info
+        var userInfoCache = new Dictionary<Guid, string>();
+        foreach (var userId in userIds)
+        {
+            try
+            {
+                var userDto = await _userServiceClient.GetUserAsync(userId);
+                if (userDto != null)
+                {
+                    userInfoCache[userId] = $"{userDto.FirstName} {userDto.LastName}";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch user info for {UserId}", userId);
+            }
+        }
+
+        // Map tickets with user info
+        return ticketList.Select(ticket => new TicketDto(
+            Id: ticket.Id,
+            Title: ticket.Title,
+            Description: ticket.Description,
+            Status: ticket.Status.ToString(),
+            Priority: ticket.Priority.ToString(),
+            Category: ticket.Category.ToString(),
+            CustomerId: ticket.CustomerId,
+            CustomerName: userInfoCache.TryGetValue(ticket.CustomerId, out var customerName) ? customerName : null,
+            AssignedAgentId: ticket.AssignedAgentId,
+            AssignedAgentName: ticket.AssignedAgentId.HasValue && userInfoCache.TryGetValue(ticket.AssignedAgentId.Value, out var agentName) ? agentName : null,
+            OrganizationId: ticket.OrganizationId,
+            SlaId: ticket.SlaId,
+            CreatedAt: ticket.CreatedAt,
+            UpdatedAt: ticket.UpdatedAt,
+            ResolvedAt: ticket.ResolvedAt,
+            Comments: [],  // Empty for list view - not needed
+            Attachment: [] // Empty for list view - not needed
+        )).ToList();
     }
 
     public async Task<TicketStatisticsDto> GetStatisticsAsync()

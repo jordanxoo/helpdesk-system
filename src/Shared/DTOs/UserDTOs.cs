@@ -68,3 +68,13 @@ public record UserFilterRequest(
 public record AssignOrganizationRequest(
     Guid OrganizationId
 );
+
+/// <summary>
+/// Request for updating own profile data.
+/// Users can only update their own name and phone number.
+/// </summary>
+public record UpdateProfileRequest(
+    string? FirstName,
+    string? LastName,
+    string? PhoneNumber
+);

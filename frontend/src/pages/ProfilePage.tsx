@@ -70,17 +70,18 @@ export default function ProfilePage(){
             return;
         }
 
-        if(!user || !user.id)
+        if(!user)
         {
-            console.error("Brak ID użytkownika");
+            console.error("Brak danych użytkownika");
             return;
         }
 
         try{
             setSaving(true);
             setSuccessMessage('');
+            setErrors({});
 
-            const updatedUserFromApi = await userService.updateProfile(user.id,{
+            const updatedUserFromApi = await userService.updateProfile({
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 phoneNumber: formData.phoneNumber
@@ -96,9 +97,11 @@ export default function ProfilePage(){
 
             setSuccessMessage("Profil został zaktualizowany!");
             
-        }catch(error)
+        }catch(error: any)
         {
             console.error('Failed to update user: ',error);
+            const message = error.response?.data?.message || 'Nie udało się zaktualizować profilu';
+            setErrors({ submit: message });
         }finally
         {
             setSaving(false);

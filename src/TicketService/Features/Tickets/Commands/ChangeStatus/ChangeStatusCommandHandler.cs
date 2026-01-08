@@ -1,6 +1,8 @@
 using MediatR;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Shared.Caching;
 using Shared.DTOs;
 using Shared.Events;
 using Shared.Exceptions;
@@ -13,14 +15,16 @@ public class ChangeStatusCommandHandler : IRequestHandler<ChangeStatusCommand,Ti
 {
     private readonly TicketDbContext _dbContext;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<ChangeStatusCommandHandler> _logger;
 
 
-    public ChangeStatusCommandHandler(TicketDbContext dbContext, IPublishEndpoint publishEndpoint, ILogger<ChangeStatusCommandHandler> logger)
+    public ChangeStatusCommandHandler(TicketDbContext dbContext, IPublishEndpoint publishEndpoint, IDistributedCache cache, ILogger<ChangeStatusCommandHandler> logger)
     {
         _logger = logger;
         _dbContext  = dbContext;
         _publishEndpoint = publishEndpoint;
+        _cache = cache;
     }
 
 
@@ -31,7 +35,7 @@ public class ChangeStatusCommandHandler : IRequestHandler<ChangeStatusCommand,Ti
         var ticket = await _dbContext.Tickets
         .Include(t => t.Attachments)
         .Include(t => t.Comments)
-        .FirstOrDefaultAsync(t => t.Id == command.TicketId);
+        .FirstOrDefaultAsync(t => t.Id == command.TicketId, ct);
 
         if(ticket == null)
         {
@@ -71,6 +75,10 @@ public class ChangeStatusCommandHandler : IRequestHandler<ChangeStatusCommand,Ti
 
         await _dbContext.SaveChangesAsync(ct);
 
+        // Invalidate cache
+        await _cache.RemoveAsync(CacheKeys.Ticket(ticket.Id), ct);
+        await _cache.RemoveAsync($"ticket:{ticket.Id}:history", ct);
+
         _logger.LogInformation("Ticket {ticketId} status changed from {oldStatus} to {newStatus}",ticket.Id,oldStatus,newStatus);
     
         return MapToDto(ticket);
@@ -85,7 +93,9 @@ public class ChangeStatusCommandHandler : IRequestHandler<ChangeStatusCommand,Ti
             Priority: ticket.Priority.ToString(),
             Category: ticket.Category.ToString(),
             CustomerId: ticket.CustomerId,
+            CustomerName: null,
             AssignedAgentId: ticket.AssignedAgentId,
+            AssignedAgentName: null,
             OrganizationId: ticket.OrganizationId,
             SlaId: ticket.SlaId,
             CreatedAt: ticket.CreatedAt,
@@ -94,6 +104,8 @@ public class ChangeStatusCommandHandler : IRequestHandler<ChangeStatusCommand,Ti
             Comments: ticket.Comments.Select(c => new CommentDto(
                 Id: c.Id,
                 UserId: c.UserId,
+                UserName: null,
+                UserRole: null,
                 Content: c.Content,
                 CreatedAt: c.CreatedAt,
                 IsInternal: c.IsInternal

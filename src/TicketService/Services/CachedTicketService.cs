@@ -86,6 +86,13 @@ public class CachedTicketService : ITicketService
         return result;
     }
 
+    public async Task<TicketDto> UnassignAgentAsync(Guid ticketId)
+    {
+        var result = await _inner.UnassignAgentAsync(ticketId);
+        await InvalidateTicketCacheAsync(ticketId);
+        return result;
+    }
+
     public async Task DeleteAsync(Guid id)
     {
         await _inner.DeleteAsync(id);
@@ -116,6 +123,14 @@ public class CachedTicketService : ITicketService
         await InvalidateTicketCacheAsync(ticketId);
         return result;
     }
+
+    public async Task<TicketDto> ChangePriorityAsync(Guid ticketId, string newPriority)
+    {
+        var result = await _inner.ChangePriorityAsync(ticketId, newPriority);
+        await InvalidateTicketCacheAsync(ticketId);
+        return result;
+    }
+
     public async Task<TicketAttachment> AddAttachmentAsync(Guid ticketId, Guid userId, IFormFile file)
     {
         var result = await _inner.AddAttachmentAsync(ticketId,userId,file);

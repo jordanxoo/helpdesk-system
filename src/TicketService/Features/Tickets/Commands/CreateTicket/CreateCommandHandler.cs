@@ -111,7 +111,9 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand,Ti
             Priority: ticket.Priority.ToString(),
             Category: ticket.Category.ToString(),
             CustomerId: ticket.CustomerId,
+            CustomerName: null,
             AssignedAgentId: ticket.AssignedAgentId,
+            AssignedAgentName: null,
             OrganizationId: ticket.OrganizationId,
             SlaId: ticket.SlaId,
             CreatedAt: ticket.CreatedAt,
@@ -120,6 +122,8 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand,Ti
             Comments: [.. ticket.Comments.Select(c => new CommentDto(
                 Id: c.Id,
                 UserId: c.UserId,
+                UserName: null,
+                UserRole: null,
                 Content: c.Content,
                 CreatedAt: c.CreatedAt,
                 IsInternal: c.IsInternal

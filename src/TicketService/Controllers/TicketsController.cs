@@ -9,6 +9,7 @@ using TicketService.Features.Tickets.Commands.CreateTicket;
 using TicketService.Features.Tickets.Commands.UpdateTicket;
 using TicketService.Features.Tickets.Commands.AssignToAgent;
 using TicketService.Features.Tickets.Commands.ChangeStatus;
+using TicketService.Features.Tickets.Commands.ChangePriority;
 
 namespace TicketService.Controllers;
 
@@ -188,6 +189,31 @@ public async Task<ActionResult<TicketDto>> AssignToAgent(Guid id, Guid agentId)
 }
 
     /// <summary>
+    /// Przypisuje lub usuwa przypisanie agenta do ticketa
+    /// </summary>
+    [HttpPatch("{id}/assign")]
+    [Authorize(Roles = "Agent,Administrator")]
+    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> AssignTicket(Guid id, [FromBody] AssignTicketRequest request)
+    {
+        TicketDto ticket;
+        
+        if (request.AgentId.HasValue && request.AgentId.Value != Guid.Empty)
+        {
+            // Assign to agent
+            ticket = await _ticketService.AssignToAgentAsync(id, request.AgentId.Value);
+        }
+        else
+        {
+            // Unassign agent
+            ticket = await _ticketService.UnassignAgentAsync(id);
+        }
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
     /// Zmienia status ticketa
     /// </summary>
     [HttpPatch("{id}/status")]
@@ -199,13 +225,73 @@ public async Task<ActionResult<TicketDto>> AssignToAgent(Guid id, Guid agentId)
         Guid id, 
         [FromBody] ChangeStatusRequest request)
     {
-        var command = new ChangeStatusCommand
-        {
-            TicketId = id,
-            NewStatus = request.NewStatus
-        };
+        var ticket = await _ticketService.ChangeStatusAsync(id, request.NewStatus);
+        return Ok(ticket);
+    }
 
-        var ticket = await _mediator.Send(command);
+    /// <summary>
+    /// Zmienia priorytet ticketa
+    /// </summary>
+    [HttpPatch("{id}/priority")]
+    [Authorize(Roles = "Agent,Administrator")]
+    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> ChangePriority(
+        Guid id, 
+        [FromBody] ChangePriorityRequest request)
+    {
+        var ticket = await _ticketService.ChangePriorityAsync(id, request.NewPriority);
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// Zamyka ticket - dostępne dla klientów (własne, rozwiązane) i agentów/adminów (wszystkie)
+    /// Customer: Może zamknąć tylko swoje zgłoszenie, które ma status Resolved
+    /// Agent/Admin: Może zamknąć każde zgłoszenie
+    /// </summary>
+    [HttpPatch("{id}/close")]
+    [Authorize(Roles = "Customer,Agent,Administrator")]
+    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> CloseTicket(Guid id)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "Invalid user ID" });
+        }
+
+        // Get ticket to check ownership and status
+        var existingTicket = await _ticketService.GetByIdAsync(id);
+        if (existingTicket == null)
+        {
+            return NotFound(new { message = "Ticket not found" });
+        }
+
+        // For Customer role: verify ownership and status
+        if (userRole == UserRoles.Customer)
+        {
+            // Check if this is customer's own ticket
+            if (existingTicket.CustomerId != userId)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, 
+                    new { message = "You can only close your own tickets" });
+            }
+
+            // Check if ticket status is Resolved
+            if (existingTicket.Status != "Resolved")
+            {
+                return BadRequest(new { message = "You can only close tickets that have been resolved" });
+            }
+        }
+
+        // Close the ticket
+        var ticket = await _ticketService.ChangeStatusAsync(id, "Closed");
         return Ok(ticket);
     }
 

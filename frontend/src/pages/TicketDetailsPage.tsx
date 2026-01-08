@@ -38,7 +38,7 @@ export default function TicketDetailsPage() {
     const isCustomer = user?.role === 'Customer';
     const isAgent = user?.role === 'Agent' || user?.role === 'Administrator';
     const isAdmin = user?.role === 'Administrator';
-    const isAssignedToMe = ticket?.agentId === user?.id;
+    const isAssignedToMe = ticket?.assignedAgentId === user?.id;
 
     useEffect(() => {
         // Sprawdź czy użytkownik jest zalogowany
@@ -80,14 +80,13 @@ export default function TicketDetailsPage() {
         
         try {
             setSubmittingComment(true);
-            await ticketService.addComment(id, newComment);
+            const updatedTicket = await ticketService.addComment(id, newComment);
             setNewComment('');
-            
-            // Odśwież ticket
-            const data = await ticketService.getTicketById(id);
-            setTicket(data);
-        } catch (error) {
+            setTicket(updatedTicket);
+        } catch (error: any) {
             console.error('Failed to add comment:', error);
+            const message = error.response?.data?.message || 'Nie udało się dodać komentarza';
+            alert(message);
         } finally {
             setSubmittingComment(false);
         }
@@ -98,11 +97,12 @@ export default function TicketDetailsPage() {
         
         try {
             setUpdatingStatus(true);
-            await ticketService.updateTicketStatus(id, newStatus);
-            const data = await ticketService.getTicketById(id);
-            setTicket(data);
-        } catch (error) {
+            const updatedTicket = await ticketService.updateTicketStatus(id, newStatus);
+            setTicket(updatedTicket);
+        } catch (error: any) {
             console.error('Failed to update status:', error);
+            const message = error.response?.data?.message || 'Nie udało się zmienić statusu';
+            alert(message);
         } finally {
             setUpdatingStatus(false);
         }
@@ -112,11 +112,12 @@ export default function TicketDetailsPage() {
         if (!id || !user?.id) return;
         
         try {
-            await ticketService.assignTicket(id, user.id);
-            const data = await ticketService.getTicketById(id);
-            setTicket(data);
-        } catch (error) {
+            const updatedTicket = await ticketService.assignTicket(id, user.id);
+            setTicket(updatedTicket);
+        } catch (error: any) {
             console.error("Failed to assign ticket:", error);
+            const message = error.response?.data?.message || 'Nie udało się przypisać zgłoszenia';
+            alert(message);
         }
     }
 
@@ -124,11 +125,12 @@ export default function TicketDetailsPage() {
         if (!id) return;
         
         try {
-            await ticketService.assignTicket(id, ""); // pusty string = unassign
-            const data = await ticketService.getTicketById(id);
-            setTicket(data);
-        } catch (error) {
+            const updatedTicket = await ticketService.assignTicket(id, ""); // pusty string = unassign
+            setTicket(updatedTicket);
+        } catch (error: any) {
             console.error("Failed to unassign ticket:", error);
+            const message = error.response?.data?.message || 'Nie udało się usunąć przypisania';
+            alert(message);
         }
     };
 
@@ -136,11 +138,12 @@ export default function TicketDetailsPage() {
         if (!id) return;
         
         try {
-            await ticketService.updateTicketPriority(id, newPriority);
-            const data = await ticketService.getTicketById(id);
-            setTicket(data);
-        } catch (error) {
+            const updatedTicket = await ticketService.updateTicketPriority(id, newPriority);
+            setTicket(updatedTicket);
+        } catch (error: any) {
             console.error("Failed to change priority:", error);
+            const message = error.response?.data?.message || 'Nie udało się zmienić priorytetu';
+            alert(message);
         }
     };
 
@@ -148,11 +151,12 @@ export default function TicketDetailsPage() {
         if (!id) return;
         
         try {
-            await ticketService.assignTicket(id, agentID);
-            const data = await ticketService.getTicketById(id);
-            setTicket(data);
-        } catch (error) {
+            const updatedTicket = await ticketService.assignTicket(id, agentID);
+            setTicket(updatedTicket);
+        } catch (error: any) {
             console.error("Failed to assign agent:", error);
+            const message = error.response?.data?.message || 'Nie udało się przypisać agenta';
+            alert(message);
         }
     };
 
@@ -161,11 +165,13 @@ export default function TicketDetailsPage() {
         
         if (confirm('Czy na pewno chcesz zamknąć to zgłoszenie?')) {
             try {
-                await ticketService.updateTicketStatus(id, 'Closed');
-                const data = await ticketService.getTicketById(id);
-                setTicket(data);
-            } catch (error) {
+                const updatedTicket = await ticketService.closeTicket(id);
+                setTicket(updatedTicket);
+            } catch (error: any) {
                 console.error('Failed to close ticket:', error);
+                // Show error message to user
+                const message = error.response?.data?.message || 'Nie udało się zamknąć zgłoszenia';
+                alert(message);
             }
         }
     };
@@ -274,22 +280,28 @@ export default function TicketDetailsPage() {
                             
                             <div className="space-y-4 max-h-96 overflow-y-auto">
                                 {ticket.comments && ticket.comments.length > 0 ? (
-                                    ticket.comments.map((comment: TicketComment) => (
-                                        <div key={comment.id} className="border-l-4 border-blue-500 pl-4 py-2">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-sm">{comment.userName}</span>
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {comment.userRole}
-                                                    </Badge>
+                                    ticket.comments.map((comment: TicketComment) => {
+                                        const borderColor = comment.userRole === 'Customer' ? '#3b82f6' 
+                                            : comment.userRole === 'Agent' ? '#a855f7' 
+                                            : comment.userRole === 'Administrator' ? '#ef4444' 
+                                            : '#3b82f6';
+                                        return (
+                                            <div key={comment.id} className="border-l-4 pl-4 py-2" style={{ borderColor }}>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-sm">{comment.userName}</span>
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {comment.userRole}
+                                                        </Badge>
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">
+                                                        {new Date(comment.createdAt).toLocaleString('pl-PL')}
+                                                    </span>
                                                 </div>
-                                                <span className="text-xs text-gray-500">
-                                                    {new Date(comment.createdAt).toLocaleString('pl-PL')}
-                                                </span>
+                                                <p className="text-gray-700 text-sm">{comment.content}</p>
                                             </div>
-                                            <p className="text-gray-700 text-sm">{comment.content}</p>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <p className="text-center text-gray-500 py-8">Brak komentarzy</p>
                                 )}
@@ -346,7 +358,7 @@ export default function TicketDetailsPage() {
                             <CardContent className="space-y-4">
                                 
                                 {/* TYLKO AGENT - Przycisk "Przypisz mnie" */}
-                                {!isAdmin && !ticket.agentId && (
+                                {!isAdmin && !ticket.assignedAgentId && (
                                     <Button 
                                         onClick={handleAssignToMe}
                                         className="w-full"
@@ -375,7 +387,7 @@ export default function TicketDetailsPage() {
                                             Przypisz agenta
                                         </label>
                                         <Select 
-                                            value={ticket.agentId || 'unassigned'} 
+                                            value={ticket.assignedAgentId || 'unassigned'} 
                                             onValueChange={(value) => handleAssignAgent(value === 'unassigned' ? '' : value)}
                                         >
                                             <SelectTrigger>

@@ -1,5 +1,5 @@
 import api from './api';
-import type { Ticket, CreateTicketRequest, TicketComment, TicketDetails, TicketListResponse } from '../types/ticket.types';
+import type { Ticket, CreateTicketRequest, TicketDetails } from '../types/ticket.types';
 
 // Interface for paginated response from backend
 interface TicketApiResponse {
@@ -30,23 +30,30 @@ export const ticketService = {
         return response.data;
     },
 
-    async updateTicketStatus(id: string, status: string): Promise<Ticket> {
-        const response = await api.patch<Ticket>(`/api/tickets/${id}/status`, { newStatus: status });
+    async updateTicketStatus(id: string, status: string): Promise<TicketDetails> {
+        const response = await api.patch<TicketDetails>(`/api/tickets/${id}/status`, { newStatus: status });
         return response.data;
     },
 
-    async updateTicketPriority(id: string, priority: string): Promise<Ticket> {
-        const response = await api.patch<Ticket>(`/api/tickets/${id}/priority`, { newPriority: priority });
+    async updateTicketPriority(id: string, priority: string): Promise<TicketDetails> {
+        const response = await api.patch<TicketDetails>(`/api/tickets/${id}/priority`, { newPriority: priority });
         return response.data;
     },
 
-    async assignTicket(id: string, agentId: string): Promise<Ticket> {
-        const response = await api.patch<Ticket>(`/api/tickets/${id}/assign`, { agentId });
+    async assignTicket(id: string, agentId: string): Promise<TicketDetails> {
+        // Send null for unassign (empty string), or the agentId for assign
+        const agentIdValue = agentId && agentId.trim() !== '' ? agentId : null;
+        const response = await api.patch<TicketDetails>(`/api/tickets/${id}/assign`, { agentId: agentIdValue });
         return response.data;
     },
 
-    async addComment(ticketId: string, content: string): Promise<TicketComment> {
-        const response = await api.post<TicketComment>(`/api/tickets/${ticketId}/comments`, { content });
+    async addComment(ticketId: string, content: string): Promise<TicketDetails> {
+        const response = await api.post<TicketDetails>(`/api/tickets/${ticketId}/comments`, { content });
+        return response.data;
+    },
+
+    async closeTicket(id: string): Promise<TicketDetails> {
+        const response = await api.patch<TicketDetails>(`/api/tickets/${id}/close`);
         return response.data;
     },
 

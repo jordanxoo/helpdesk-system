@@ -6,10 +6,11 @@ export interface Ticket {
   priority: string;
   category?: string;
   customerId: string;
-  customerName: string;
-  customerEmail: string;
-  agentId: string | null;
-  agentName: string | null;
+  customerName?: string;
+  customerEmail?: string;
+  assignedAgentId: string | null;  // Backend sends assignedAgentId
+  agentId?: string | null;         // Alias for compatibility
+  agentName?: string | null;
   assignedAgentName?: string | null;
   createdAt: string;
   updatedAt: string;

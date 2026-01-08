@@ -1,80 +1,71 @@
-using System.Formats.Asn1;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Shared.Caching;
 using Shared.DTOs;
 using Shared.Exceptions;
 using Shared.Models;
 using TicketService.Data;
 
-namespace TicketService.Features.Tickets.Commands.UpdateTicket;
+namespace TicketService.Features.Tickets.Commands.ChangePriority;
 
-
-public class UpdateTicketCommandHandler : IRequestHandler<UpdateTicketCommand,TicketDto>
+public class ChangePriorityCommandHandler : IRequestHandler<ChangePriorityCommand, TicketDto>
 {
     private readonly TicketDbContext _dbContext;
-    private readonly ILogger<UpdateTicketCommandHandler> _logger;
+    private readonly IDistributedCache _cache;
+    private readonly ILogger<ChangePriorityCommandHandler> _logger;
 
-    public UpdateTicketCommandHandler(TicketDbContext dbContext, ILogger<UpdateTicketCommandHandler> logger)
+    public ChangePriorityCommandHandler(TicketDbContext dbContext, IDistributedCache cache, ILogger<ChangePriorityCommandHandler> logger)
     {
-        _dbContext = dbContext;
         _logger = logger;
+        _dbContext = dbContext;
+        _cache = cache;
     }
 
-    public async Task<TicketDto> Handle(UpdateTicketCommand command, CancellationToken ct)
+    public async Task<TicketDto> Handle(ChangePriorityCommand command, CancellationToken ct)
     {
-        _logger.LogInformation("Updating Ticket {ticketId}",command.TicketId);
+        _logger.LogInformation("Changing ticket {ticketId} priority to {newPriority}", command.TicketId, command.NewPriority);
 
         var ticket = await _dbContext.Tickets
-        .Include(t => t.Comments)
-        .Include(t => t.Attachments)
-        .FirstOrDefaultAsync(t => t.Id == command.TicketId,ct);
+            .Include(t => t.Attachments)
+            .Include(t => t.Comments)
+            .FirstOrDefaultAsync(t => t.Id == command.TicketId, ct);
 
-        if(ticket == null)
+        if (ticket == null)
         {
             throw new NotFoundException("Ticket", command.TicketId);
-
         }
 
-        if(!string.IsNullOrEmpty(command.Title))
-        {
-            ticket.Title = command.Title;
-        }
+        var oldPriority = ticket.Priority;
+        var newPriority = Enum.Parse<TicketPriority>(command.NewPriority, ignoreCase: true);
 
-        if(!string.IsNullOrEmpty(command.Description))
-        {
-            ticket.Description = command.Description;
-        }
-
-        if(!string.IsNullOrEmpty(command.Category))
-        {
-            ticket.Category = Enum.Parse<TicketCategory>(command.Category, ignoreCase: true);
-        }
-
-        if(!string.IsNullOrEmpty(command.Priority))
-        {
-            ticket.Priority = Enum.Parse<TicketPriority>(command.Priority, ignoreCase: true);    
-        }
-
-        if(command.SlaID.HasValue)
-        {
-            ticket.SlaId = command.SlaID.Value;
-        }
+        ticket.Priority = newPriority;
+        ticket.UpdatedAt = DateTime.UtcNow;
 
         _dbContext.TicketAuditLogs.Add(new TicketAuditLog
         {
             Id = Guid.NewGuid(),
             TicketId = ticket.Id,
-            UserId = Guid.Empty, // TODO POBRAC Z HTTPCONTEX JESLI POTRZEBA
-            Action = AuditAction.Updated,
-            Description = $"Ticket Updated",
+            UserId = Guid.Empty, // TODO: Add userId from HttpContext
+            Action = AuditAction.PriorityChanged,
+            FieldName = "Priority",
+            OldValue = oldPriority.ToString(),
+            NewValue = newPriority.ToString(),
+            Description = $"Priority changed from {oldPriority} to {newPriority}",
             CreatedAt = DateTime.UtcNow
         });
 
         await _dbContext.SaveChangesAsync(ct);
-        _logger.LogInformation("Ticket {ticketId} updated successfully",ticket.Id);
+
+        // Invalidate cache
+        await _cache.RemoveAsync(CacheKeys.Ticket(ticket.Id), ct);
+        await _cache.RemoveAsync($"ticket:{ticket.Id}:history", ct);
+
+        _logger.LogInformation("Ticket {ticketId} priority changed from {oldPriority} to {newPriority}", ticket.Id, oldPriority, newPriority);
 
         return MapToDto(ticket);
     }
+
     private static TicketDto MapToDto(Ticket ticket)
     {
         return new TicketDto(
@@ -111,6 +102,5 @@ public class UpdateTicketCommandHandler : IRequestHandler<UpdateTicketCommand,Ti
                 UploadedAt: a.UploadedAt
             )).ToList()
         );
-
     }
 }
