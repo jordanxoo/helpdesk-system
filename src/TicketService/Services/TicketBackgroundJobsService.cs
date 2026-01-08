@@ -85,14 +85,14 @@ public class TicketBackgroundJobsService : ITicketBackgroundJobsService
         foreach( var ticket in ticketsToClose)
         {
             var oldStatus = ticket.Status;
-            ticket.Status = TicketStatus.Resolved;
+            ticket.Status = TicketStatus.Closed; 
             ticket.UpdatedAt = DateTime.UtcNow;
 
             _dbContext.TicketComments.Add(new TicketComment
             {
                 TicketId = ticket.Id,
-                UserId =Guid.Empty,
-                Content = "TicketAutomatically closed after 7 days in Resolved status.",
+                UserId = Guid.Empty,
+                Content = "Ticket automatically closed after 7 days in Resolved status.",
                 IsInternal = true,
                 CreatedAt = DateTime.UtcNow
             });
@@ -146,8 +146,18 @@ public class TicketBackgroundJobsService : ITicketBackgroundJobsService
                 Timestamp = DateTime.UtcNow
             });
 
+            // Update ticket to mark that reminder was sent (needed for MassTransit Outbox to work)
+            ticket.UpdatedAt = DateTime.UtcNow;
+
             _logger.LogInformation("Sent reminder for ticket {TicketId}", ticket.Id);
         }
+
+        // Save changes to commit the outbox messages
+        if(ticketsNeedingReminder.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+
         _logger.LogInformation("Reminders sent - {Count} tickets", ticketsNeedingReminder.Count);
         return ticketsNeedingReminder.Count;
     }

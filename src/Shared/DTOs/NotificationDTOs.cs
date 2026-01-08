@@ -71,3 +71,38 @@ public record CommentAddedNotification : NotificationDto
         Icon = "message";
     }
 }
+
+public record TicketReminderNotification : NotificationDto
+{
+    public Guid TicketId {get;init;}
+    public string? Title {get;init;}
+    public int HoursSinceCreated {get;init;}
+    public int DaysSinceCreated {get;init;}
+    public Guid CustomerId {get;init;}
+    public Guid? AgentId {get;init;}
+
+    public TicketReminderNotification()
+    {
+        Type = "TicketReminder";
+        Icon = "⏰";
+        Priority = "warning";
+    }
+}
+
+public record TicketSlaBreachedNotification : NotificationDto
+{
+    public Guid TicketId {get;init;}
+    public string? Title {get;init;}
+    public int HoursOverdue {get;init;}
+    public int DaysOverdue {get;init;}
+    public Guid CustomerId {get;init;}
+    public Guid? AgentId {get;init;}
+    public DateTime CreatedAt {get;init;}
+
+    public TicketSlaBreachedNotification()
+    {
+        Type = "SlaBreached";
+        Icon = "🚨";
+        Priority = "critical";
+    }
+}

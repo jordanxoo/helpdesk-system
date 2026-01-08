@@ -27,7 +27,18 @@ public class UserRegisteredConsumer : IConsumer<UserRegisteredEvent>
 
         try
         {
-            var exsistingUser = await _userService.GetByIdAsync(message.UserId);
+            // Try to get existing user, but don't throw if not found
+            UserDto? exsistingUser = null;
+            try
+            {
+                exsistingUser = await _userService.GetByIdAsync(message.UserId);
+            }
+            catch (Shared.Exceptions.NotFoundException)
+            {
+                // User doesn't exist yet - this is expected for new registrations
+                _logger.LogDebug("User {UserId} not found in UserService, will create new user", message.UserId);
+            }
+            
             if(exsistingUser != null)
             {
                 _logger.LogWarning("User {userID} already exsists, skipping",message.UserId);
