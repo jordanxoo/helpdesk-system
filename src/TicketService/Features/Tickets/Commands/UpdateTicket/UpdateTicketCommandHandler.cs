@@ -1,6 +1,8 @@
 using System.Formats.Asn1;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Shared.Caching;
 using Shared.DTOs;
 using Shared.Exceptions;
 using Shared.Models;
@@ -12,11 +14,13 @@ namespace TicketService.Features.Tickets.Commands.UpdateTicket;
 public class UpdateTicketCommandHandler : IRequestHandler<UpdateTicketCommand,TicketDto>
 {
     private readonly TicketDbContext _dbContext;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<UpdateTicketCommandHandler> _logger;
 
-    public UpdateTicketCommandHandler(TicketDbContext dbContext, ILogger<UpdateTicketCommandHandler> logger)
+    public UpdateTicketCommandHandler(TicketDbContext dbContext, IDistributedCache cache, ILogger<UpdateTicketCommandHandler> logger)
     {
         _dbContext = dbContext;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -71,6 +75,11 @@ public class UpdateTicketCommandHandler : IRequestHandler<UpdateTicketCommand,Ti
         });
 
         await _dbContext.SaveChangesAsync(ct);
+
+        // Invalidate cache
+        await _cache.RemoveAsync(CacheKeys.Ticket(ticket.Id), ct);
+        await _cache.RemoveAsync($"ticket:{ticket.Id}:history", ct);
+
         _logger.LogInformation("Ticket {ticketId} updated successfully",ticket.Id);
 
         return MapToDto(ticket);
