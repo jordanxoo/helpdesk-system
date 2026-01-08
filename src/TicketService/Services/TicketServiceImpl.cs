@@ -71,6 +71,9 @@ public class TicketServiceImpl : ITicketService
             {
                 using var transaction = await _dbContext.Database.BeginTransactionAsync();
                 
+                
+                var downloadUrl = _fileStorageService.GetPresignedUrl(storagePath);
+                
                 attachment = new Shared.Models.TicketAttachment
                 {
                     Id = fileID,
@@ -80,6 +83,7 @@ public class TicketServiceImpl : ITicketService
                     ContentType = file.ContentType,
                     FileSizeBytes = file.Length,
                     StoragePath = storagePath,
+                    DownloadUrl = downloadUrl,  
                     UploadedAt = DateTime.UtcNow
                 };
 
@@ -94,8 +98,7 @@ public class TicketServiceImpl : ITicketService
                 await transaction.CommitAsync();
             });
 
-            attachment!.DownloadUrl = _fileStorageService.GetPresignedUrl(storagePath);
-            return attachment;
+            return attachment!;
         }
         catch
         {
