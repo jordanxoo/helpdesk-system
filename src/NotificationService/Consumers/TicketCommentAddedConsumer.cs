@@ -35,8 +35,8 @@ public class TicketCommentAddedConsumer : IConsumer<CommentAddedEvent>
 
             await Task.WhenAll(authorTask,customerTask);
 
-            var customer = customerTask.Result;
-            var author = authorTask.Result;
+            var customer = await customerTask;
+            var author = await authorTask;
 
             if(author == null)
             {

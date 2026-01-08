@@ -39,8 +39,8 @@ public class TicketAssignedConsumer : IConsumer<TicketAssignedEvent>
 
             await Task.WhenAll(customerTask,agentTask);
         
-            var customer = customerTask.Result;
-            var agent = agentTask.Result;
+            var customer = await customerTask;
+            var agent = await agentTask;
 
             if(customer == null)
             {

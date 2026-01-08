@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ticketService } from '../services/ticketService';
 //import { mockTickets } from '../data/mockData';
-import type { TicketDetails, TicketComment } from '../types/ticket.types';
+import type { TicketDetails, TicketComment, TicketAttachment } from '../types/ticket.types';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { ArrowLeft, Send, Clock, User, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Send, Clock, User, AlertCircle, Paperclip, Upload, FileText, Image, File, Download, X, ZoomIn } from 'lucide-react';
 import { userService } from '../services/userService';
+import { validateFile, FILE_UPLOAD_LIMITS } from '../constants/fileValidation';
 
 export default function TicketDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -20,6 +21,10 @@ export default function TicketDetailsPage() {
     const [submittingComment, setSubmittingComment] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [agents, setAgents] = useState<any[]>([]);
+    const [uploadingFile, setUploadingFile] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [previewImage, setPreviewImage] = useState<TicketAttachment | null>(null);
+    const [imageLoadErrors, setImageLoadErrors] = useState<Set<string>>(new Set());
 
     // Bezpieczne pobieranie użytkownika z localStorage
     const getUserFromStorage = () => {
@@ -40,9 +45,22 @@ export default function TicketDetailsPage() {
     const isAdmin = user?.role === 'Administrator';
     const isAssignedToMe = ticket?.assignedAgentId === user?.id;
 
+    // Handle escape key for modal
     useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && previewImage) {
+                setPreviewImage(null);
+            }
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [previewImage]);
+
+    useEffect(() => {
+        const currentUser = getUserFromStorage();
+        
         // Sprawdź czy użytkownik jest zalogowany
-        if (!user) {
+        if (!currentUser) {
             navigate('/login', { replace: true });
             return;
         }
@@ -56,7 +74,7 @@ export default function TicketDetailsPage() {
                 setTicket(data);
                 
                 // Załaduj agentów tylko dla administratora
-                if (user?.role === 'Administrator') {
+                if (currentUser?.role === 'Administrator') {
                     try {
                         const response = await userService.getAllUsers();
                         const agentList = response.filter((u: any) => u.role === 'Agent');
@@ -73,7 +91,7 @@ export default function TicketDetailsPage() {
         };
 
         fetchData();
-    }, [id, navigate]); // Usunięto user i isAdmin z dependencies
+    }, [id, navigate]);
 
     const handleAddComment = async () => {
         if (!id || !newComment.trim()) return;
@@ -176,7 +194,65 @@ export default function TicketDetailsPage() {
         }
     };
 
- 
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !id) return;
+
+        // Validate file
+        const validation = validateFile(file);
+        if (!validation.isValid) {
+            alert(validation.error);
+            return;
+        }
+
+        try {
+            setUploadingFile(true);
+            const newAttachment = await ticketService.uploadAttachment(id, file);
+            
+            // Dodaj nowy załącznik do listy
+            setTicket(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    attachment: [...(prev.attachment || []), newAttachment]
+                };
+            });
+            
+            // Reset input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        } catch (error: any) {
+            console.error('Failed to upload attachment:', error);
+            const message = error.response?.data?.message || 'Nie udało się przesłać pliku';
+            alert(message);
+        } finally {
+            setUploadingFile(false);
+        }
+    };
+
+    const formatFileSize = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const getFileIcon = (contentType: string) => {
+        if (contentType.startsWith('image/')) {
+            return <Image className="h-5 w-5 text-blue-500" />;
+        }
+        if (contentType === 'application/pdf') {
+            return <FileText className="h-5 w-5 text-red-500" />;
+        }
+        return <File className="h-5 w-5 text-gray-500" />;
+    };
+
+    const isImageFile = (contentType: string) => {
+        return contentType.startsWith('image/');
+    };
+
     const getPriorityColor = (priority: string) => {
         switch (priority) {
             case 'Critical': return 'bg-red-500';
@@ -341,6 +417,129 @@ export default function TicketDetailsPage() {
                                     </div>
                                 )}
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Sekcja załączników */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Paperclip className="h-5 w-5" />
+                                Załączniki ({ticket.attachment?.length || 0})
+                            </CardTitle>
+                            <CardDescription>Pliki dołączone do zgłoszenia</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {ticket.attachment && ticket.attachment.length > 0 ? (
+                                <>
+                                    {/* Podgląd obrazków */}
+                                    {ticket.attachment.filter(a => isImageFile(a.contentType)).length > 0 && (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            {ticket.attachment
+                                                .filter(a => isImageFile(a.contentType))
+                                                .map((attachment: TicketAttachment) => (
+                                                    <div 
+                                                        key={attachment.id}
+                                                        className="relative group cursor-pointer rounded-lg overflow-hidden border bg-gray-100 aspect-square"
+                                                        onClick={() => setPreviewImage(attachment)}
+                                                    >
+                                                        {imageLoadErrors.has(attachment.id) ? (
+                                                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                                                <span className="text-gray-500 text-xs text-center px-2">
+                                                                    {attachment.fileName}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <img 
+                                                                    src={attachment.downloadUrl} 
+                                                                    alt={attachment.fileName}
+                                                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                                    onError={() => {
+                                                                        setImageLoadErrors(prev => new Set(prev).add(attachment.id));
+                                                                    }}
+                                                                />
+                                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                                                                    <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                                            <p className="text-white text-xs truncate">{attachment.fileName}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    )}
+
+                                    {/* Lista pozostałych plików (nie-obrazki) */}
+                                    {ticket.attachment.filter(a => !isImageFile(a.contentType)).length > 0 && (
+                                        <div className="space-y-2">
+                                            {ticket.attachment
+                                                .filter(a => !isImageFile(a.contentType))
+                                                .map((attachment: TicketAttachment) => (
+                                                    <div 
+                                                        key={attachment.id} 
+                                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            {getFileIcon(attachment.contentType)}
+                                                            <div>
+                                                                <p className="font-medium text-sm text-gray-900">
+                                                                    {attachment.fileName}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500">
+                                                                    {formatFileSize(attachment.fileSizeBytes)} • {new Date(attachment.uploadedAt).toLocaleString('pl-PL')}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <a 
+                                                            href={attachment.downloadUrl} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                                        >
+                                                            <Download className="h-4 w-4" />
+                                                            Pobierz
+                                                        </a>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="text-center text-gray-500 py-4">Brak załączników</p>
+                            )}
+
+                            {/* Formularz dodawania załącznika - dostępny dla uprawnionych użytkowników */}
+                            {(isAgent || (isCustomer && ticket.customerId === user?.id)) && (
+                                <div className="pt-4 border-t">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                        id="file-upload"
+                                        accept={FILE_UPLOAD_LIMITS.ACCEPT_ATTRIBUTE}
+                                    />
+                                    <label htmlFor="file-upload">
+                                        <Button 
+                                            variant="outline" 
+                                            className="w-full cursor-pointer"
+                                            disabled={uploadingFile}
+                                            asChild
+                                        >
+                                            <span>
+                                                <Upload className="mr-2 h-4 w-4" />
+                                                {uploadingFile ? 'Przesyłanie...' : 'Dodaj załącznik'}
+                                            </span>
+                                        </Button>
+                                    </label>
+                                    <p className="text-xs text-gray-500 mt-2 text-center">
+                                        Maksymalny rozmiar pliku: 10 MB
+                                    </p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -560,6 +759,42 @@ export default function TicketDetailsPage() {
                     </Card>
                 </div>
             </div>
+
+            {/* Modal podglądu obrazu */}
+            {previewImage && (
+                <div 
+                    className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
+                    onClick={() => setPreviewImage(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="preview-title"
+                >
+                    {/* Header z info o pliku */}
+                    <div className="w-full max-w-4xl mb-4 flex items-center justify-between">
+                        <div className="text-white">
+                            <p id="preview-title" className="font-medium text-lg">{previewImage.fileName}</p>
+                            <p className="text-gray-400 text-sm">
+                                {formatFileSize(previewImage.fileSizeBytes)} • {new Date(previewImage.uploadedAt).toLocaleString('pl-PL')}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setPreviewImage(null)}
+                            className="text-white hover:text-gray-300 transition-colors p-2"
+                            aria-label="Zamknij podgląd"
+                        >
+                            <X className="h-8 w-8" />
+                        </button>
+                    </div>
+                    
+                    {/* Obraz */}
+                    <img 
+                        src={previewImage.downloadUrl}
+                        alt={previewImage.fileName}
+                        className="max-w-4xl w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 }

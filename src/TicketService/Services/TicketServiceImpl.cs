@@ -699,20 +699,15 @@ public class TicketServiceImpl : ITicketService
 
             Attachment: [.. ticket.Attachments.Select(a =>
             {   
-                //generowanie linku wewnatrz sieci docker
-                var internalUrl = _fileStorageService.GetPresignedUrl(a.StoragePath);
-
-                // hack dla hosta: zmiana minio na localhost zeby przegladarka mogla pobrac plik
-                // remove in production
-                var browserUrl = internalUrl.Replace("minio:9000","localhost:9000");
+                var downloadUrl = _fileStorageService.GetPresignedUrl(a.StoragePath);
 
                 return new TicketAttachmentDto(
                     id: a.Id,
                     FileName: a.FileName,
                     ContentType: a.ContentType,
                     FileSizeBytes: a.FileSizeBytes,
-                    DownloadUrl: browserUrl,
-                    UploadedAt: DateTime.UtcNow
+                    DownloadUrl: downloadUrl,
+                    UploadedAt: a.UploadedAt
                 );
 
             })]
@@ -795,16 +790,15 @@ public class TicketServiceImpl : ITicketService
 
             Attachment: [.. ticket.Attachments.Select(a =>
             {   
-                var internalUrl = _fileStorageService.GetPresignedUrl(a.StoragePath);
-                var browserUrl = internalUrl.Replace("minio:9000","localhost:9000");
+                var downloadUrl = _fileStorageService.GetPresignedUrl(a.StoragePath);
 
                 return new TicketAttachmentDto(
                     id: a.Id,
                     FileName: a.FileName,
                     ContentType: a.ContentType,
                     FileSizeBytes: a.FileSizeBytes,
-                    DownloadUrl: browserUrl,
-                    UploadedAt: DateTime.UtcNow
+                    DownloadUrl: downloadUrl,
+                    UploadedAt: a.UploadedAt
                 );
             })]
         );

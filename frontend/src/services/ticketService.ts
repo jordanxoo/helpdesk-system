@@ -1,5 +1,5 @@
 import api from './api';
-import type { Ticket, CreateTicketRequest, TicketDetails } from '../types/ticket.types';
+import type { Ticket, CreateTicketRequest, TicketDetails, TicketAttachment } from '../types/ticket.types';
 
 // Interface for paginated response from backend
 interface TicketApiResponse {
@@ -63,6 +63,22 @@ export const ticketService = {
 
     async getStatistics(): Promise<{ byStatus: Record<string, number>; byPriority: Record<string, number>; total: number; unassigned: number }> {
         const response = await api.get('/api/tickets/statistics');
+        return response.data;
+    },
+
+    async uploadAttachment(ticketId: string, file: File): Promise<TicketAttachment> {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await api.post<TicketAttachment>(
+            `/api/tickets/${ticketId}/attachments`,
+            formData,
+            {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
         return response.data;
     },
 };

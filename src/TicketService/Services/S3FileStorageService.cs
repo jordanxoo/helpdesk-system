@@ -17,11 +17,13 @@ public interface IFileStorageService
 }
 
 
-public class S3FileStorageService : IFileStorageService
+public class S3FileStorageService : IFileStorageService, IDisposable
 {
     private readonly IAmazonS3 _s3Client;
+    private readonly IAmazonS3 _s3ClientForUrls; // Client configured with public URL for presigned URLs
     private readonly FileStorageSettings _settings;
     private readonly ILogger<S3FileStorageService> _logger;
+    private bool _disposed = false;
 
 
     public S3FileStorageService(IAmazonS3 amazonS3, IOptions<FileStorageSettings> settings, ILogger<S3FileStorageService> logger)
@@ -29,6 +31,18 @@ public class S3FileStorageService : IFileStorageService
         _s3Client = amazonS3;
         _settings = settings.Value;
         _logger = logger;
+
+        // Create a separate client for URL generation with public URL
+        var publicUrl = !string.IsNullOrEmpty(_settings.PublicServiceUrl) 
+            ? _settings.PublicServiceUrl 
+            : _settings.ServiceUrl;
+            
+        var urlConfig = new AmazonS3Config
+        {
+            ServiceURL = publicUrl,
+            ForcePathStyle = true
+        };
+        _s3ClientForUrls = new AmazonS3Client(_settings.AccessKey, _settings.SecretKey, urlConfig);
     }
 
     public async Task<string> UploadFileAsync(IFormFile file, string key)
@@ -69,7 +83,8 @@ public class S3FileStorageService : IFileStorageService
             Verb = HttpVerb.GET,
             Protocol = Protocol.HTTP
         };
-        return _s3Client.GetPreSignedURL(request);
+        // Use the client configured with public URL for browser-accessible presigned URLs
+        return _s3ClientForUrls.GetPreSignedURL(request);
     }
 
     public async Task DeleteFileAsync(string key)
@@ -98,5 +113,13 @@ public class S3FileStorageService : IFileStorageService
         }
     }
 
-}
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
 
+            _s3ClientForUrls?.Dispose();
+            _disposed = true;
+        }
+    }
+}

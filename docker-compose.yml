@@ -119,6 +119,7 @@ services:
       JwtSettings__Issuer: ${JWT_ISSUER}
       JwtSettings__Audience: ${JWT_AUDIENCE}
       FileStorage__ServiceUrl: http://minio:9000
+      FileStorage__PublicServiceUrl: http://localhost:9000  # DEV ONLY - change to public URL in production
       FileStorage__AccessKey: admin
       FileStorage__SecretKey: password123
       FileStorage__BucketName: helpdesk-attachments

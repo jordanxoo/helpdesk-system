@@ -27,10 +27,20 @@ export interface TicketComment {
   createdAt: string;
 }
 
+export interface TicketAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  downloadUrl: string;
+  uploadedAt: string;
+}
+
 export interface CreateTicketRequest {
   title: string;
   description: string;
   priority: string;
+  category: string;
 }
 
 export interface AddCommentRequest {
@@ -47,4 +57,5 @@ export interface TicketListResponse {
 
 export interface TicketDetails extends Ticket {
     comments: TicketComment[];
+    attachment?: TicketAttachment[];
 }
