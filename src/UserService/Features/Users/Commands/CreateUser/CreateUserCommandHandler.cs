@@ -1,9 +1,11 @@
 using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Shared.DTOs;
 using Shared.Events;
 using Shared.Exceptions;
+using Shared.Extensions;
 using Shared.Models;
 using UserService.Data;
 
@@ -14,12 +16,14 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand,UserDt
 {
     private readonly UserDbContext _dbContext;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<CreateUserCommandHandler> _logger;
 
-    public CreateUserCommandHandler(UserDbContext dbContext, IPublishEndpoint publishEndpoint, ILogger<CreateUserCommandHandler> logger)
+    public CreateUserCommandHandler(UserDbContext dbContext, IPublishEndpoint publishEndpoint, IDistributedCache cache, ILogger<CreateUserCommandHandler> logger)
     {
         _dbContext = dbContext;
         _publishEndpoint = publishEndpoint;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -59,23 +63,6 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand,UserDt
         });
         
     
-    return MapToDto(user);
-    }
-
-    private UserDto MapToDto(User user)
-    {
-        return new UserDto(
-            Id: user.Id,
-            Email: user.Email,
-            FirstName: user.FirstName,
-            LastName: user.LastName,
-            FullName: $"{user.FirstName} + {user.LastName}",
-            PhoneNumber: user.PhoneNumber,
-            Role: user.Role.ToString(),
-            OrganizationId: user.OrganizationId,
-            CreatedAt: user.CreatedAt,
-            UpdatedAt: user.UpdatedAt,
-            IsActive: user.IsActive
-        );
+    return user.ToDto();
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.VisualBasic;
 using Shared.DTOs;
 using Shared.Exceptions;
+using Shared.Extensions;
 using Shared.Models;
 using UserService.Repositories;
 
@@ -28,7 +29,7 @@ public class UserServiceImpl : IUserService
         {
             throw new NotFoundException("User", id);
         }
-        return MapToDto(user);
+        return user.ToDto();
     }
     public async Task<UserDto> GetByEmailAsync(string email)
     {
@@ -38,7 +39,7 @@ public class UserServiceImpl : IUserService
         {
             throw new NotFoundException($"User with email '{email}' was not found.");
         }
-        return MapToDto(user);
+        return user.ToDto();
     }
 
     public async Task<UserListResponse> GetAllAsync(int page, int pageSize)
@@ -49,7 +50,7 @@ public class UserServiceImpl : IUserService
         var totalCount = await _repository.GetTotalCountAsync(null, null, null);
 
         return new UserListResponse(
-            Users: users.Select(MapToDto).ToList(),
+            Users: users.Select(u => u.ToDto()).ToList(),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
@@ -65,7 +66,7 @@ public class UserServiceImpl : IUserService
         );
         var totalCount = await _repository.GetTotalCountAsync(filter.SearchTerm, filter.Role, filter.IsActive);
 
-        return new UserListResponse(users.Select(MapToDto).ToList(), totalCount, filter.Page, filter.PageSize);
+        return new UserListResponse(users.Select(u => u.ToDto()).ToList(), totalCount, filter.Page, filter.PageSize);
     }
     
     public async Task<UserDto> CreateAsync(CreateUserRequest request)
@@ -95,7 +96,7 @@ public class UserServiceImpl : IUserService
 
         _logger.LogInformation("User created successfully with id: {UserId}", createdUser.Id);
 
-        return MapToDto(createdUser);
+        return createdUser.ToDto();
     }
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request, Guid userId)
@@ -132,7 +133,7 @@ public class UserServiceImpl : IUserService
 
         _logger.LogInformation("User created successfully with id: {UserId}", createdUser.Id);
 
-        return MapToDto(createdUser);
+        return createdUser.ToDto();
     }
 
 
@@ -196,7 +197,7 @@ public class UserServiceImpl : IUserService
         if (!hasChanges)
         {
             _logger.LogInformation("No changes detected for user: {UserId}", id);
-            return MapToDto(user);
+            return user.ToDto();
         }
 
         user.UpdatedAt = DateTime.UtcNow;
@@ -204,7 +205,7 @@ public class UserServiceImpl : IUserService
 
         _logger.LogInformation("User updated successfully: {UserId}", id);
 
-        return MapToDto(updatedUser);
+        return updatedUser.ToDto();
     }
 
     public async Task DeleteAsync(Guid id)
@@ -238,26 +239,11 @@ public class UserServiceImpl : IUserService
         
         _logger.LogInformation("Organization assigned successfully: User {UserId} -> Organization {OrganizationId}", userId, organizationId);
         
-        return MapToDto(updatedUser);
+        return updatedUser.ToDto();
     }
 
     public async Task<bool> ExistsAsync(Guid id)
     {
         return await _repository.ExistsAsync(id);
-    }
-    private static UserDto MapToDto(User user)
-    {
-        return new UserDto(
-            Id: user.Id,
-            Email: user.Email,
-            FirstName: user.FirstName,
-            LastName: user.LastName,
-            FullName: user.FullName,
-            PhoneNumber: user.PhoneNumber,
-            Role: user.Role.ToString(),
-            OrganizationId: user.OrganizationId,
-            CreatedAt: user.CreatedAt,
-            UpdatedAt: user.UpdatedAt,
-            IsActive: user.IsActive);
     }
 }

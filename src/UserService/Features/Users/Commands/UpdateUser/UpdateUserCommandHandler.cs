@@ -1,8 +1,10 @@
 using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Shared.DTOs;
 using Shared.Exceptions;
+using Shared.Extensions;
 using UserService.Data;
 
 
@@ -12,12 +14,14 @@ namespace UserService.Features.Users.Commands.UpdateUser;
 public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand,UserDto>
 {
     private readonly UserDbContext _dbContext;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<UpdateUserCommandHandler> _logger;
     
 
-    public UpdateUserCommandHandler(UserDbContext dbContext, ILogger<UpdateUserCommandHandler> logger)
+    public UpdateUserCommandHandler(UserDbContext dbContext, IDistributedCache cache, ILogger<UpdateUserCommandHandler> logger)
     {
         _dbContext = dbContext;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -55,26 +59,12 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand,UserDt
 
         await _dbContext.SaveChangesAsync(ct);
 
+        // Invalidate cache
+        await _cache.RemoveAsync($"user-{user.Id}", ct);
+        await _cache.RemoveAsync($"user-email-{user.Email.ToLower()}", ct);
+
         _logger.LogInformation("User {UserId} updated successfully", user.Id);
 
-        return MapToDto(user);
-    }
-
-    private static UserDto MapToDto(Shared.Models.User user)
-    {
-        return new UserDto(
-            Id: user.Id,
-            Email: user.Email,
-            FirstName: user.FirstName,
-            LastName: user.LastName,
-            FullName: $"{user.FirstName} + {user.LastName}",
-            PhoneNumber: user.PhoneNumber,
-            Role: user.Role.ToString(),
-            OrganizationId: user.OrganizationId,
-            IsActive: user.IsActive,
-            CreatedAt: user.CreatedAt,
-            UpdatedAt: DateTime.UtcNow
-            
-        );
+        return user.ToDto();
     }
 }
