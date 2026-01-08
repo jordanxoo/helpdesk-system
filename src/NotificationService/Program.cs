@@ -124,6 +124,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<TicketAssignedConsumer>();
     x.AddConsumer<TicketStatusChangedConsumer>();
     x.AddConsumer<TicketCommentAddedConsumer>();
+    x.AddConsumer<TicketReminderConsumer>();
+    x.AddConsumer<TicketSlaBreachedConsumer>();
 
     x.UsingRabbitMq((context,cfg) =>
     {
@@ -167,6 +169,16 @@ builder.Services.AddMassTransit(x =>
         });
         cfg.ReceiveEndpoint("notification-service-comment-added", e =>{
             e.ConfigureConsumer<TicketCommentAddedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("notification-service-ticket-reminder", e =>
+        {
+            e.ConfigureConsumer<TicketReminderConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("notification-service-sla-breached", e =>
+        {
+            e.ConfigureConsumer<TicketSlaBreachedConsumer>(context);
         });
     });
 });
