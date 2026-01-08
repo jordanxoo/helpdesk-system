@@ -115,10 +115,12 @@ public class NotificationWorker : BackgroundService
             // TODO: Fetch customer details from AuthService/UserService using CustomerId via HTTP client
             // For now, using mock data
             var customerEmail = $"customer-{ticketEvent.CustomerId}@example.com";
+            var firstName = "Customer";
             var ticketTitle = "New Support Ticket";
 
             await emailService.SendTicketCreatedNotificationAsync(
                 customerEmail,
+                firstName,
                 ticketEvent.TicketId.ToString(),
                 ticketTitle);
 
