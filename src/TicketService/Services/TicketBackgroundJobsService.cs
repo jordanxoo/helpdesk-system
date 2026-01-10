@@ -28,13 +28,14 @@ public class TicketBackgroundJobsService : ITicketBackgroundJobsService
         _logger.LogInformation("Starting SLA overdue tickets check");
         var slaThreshold = DateTime.UtcNow.AddHours(-48);
 
-        var overDueTickets = await _dbContext.Tickets.Where
-        (
-            t => t.Status != TicketStatus.Resolved &&
-            t.Status != TicketStatus.Closed
-            && t.CreatedAt < slaThreshold
-            && t.Priority != TicketPriority.Critical
-        ).ToListAsync();
+        var overDueTickets = await _dbContext.Tickets
+            .AsNoTracking()
+            .Where(
+                t => t.Status != TicketStatus.Resolved &&
+                t.Status != TicketStatus.Closed
+                && t.CreatedAt < slaThreshold
+                && t.Priority != TicketPriority.Critical
+            ).ToListAsync();
 
         foreach(var ticket in overDueTickets)
         {
@@ -78,9 +79,10 @@ public class TicketBackgroundJobsService : ITicketBackgroundJobsService
         _logger.LogInformation("Starting auto-close for resolved tickets");
         var autoCloseThreshold = DateTime.UtcNow.AddDays(-7);
 
-        var ticketsToClose = await _dbContext.Tickets.
-        Where(t => t.Status == TicketStatus.Resolved 
-        && t.UpdatedAt < autoCloseThreshold).ToListAsync();
+        var ticketsToClose = await _dbContext.Tickets
+            .AsNoTracking()
+            .Where(t => t.Status == TicketStatus.Resolved 
+            && t.UpdatedAt < autoCloseThreshold).ToListAsync();
     
         foreach( var ticket in ticketsToClose)
         {
@@ -131,7 +133,10 @@ public class TicketBackgroundJobsService : ITicketBackgroundJobsService
         _logger.LogInformation("Starting ticket reminders check");
         var reminderThreshold = DateTime.UtcNow.AddDays(-1);
 
-        var ticketsNeedingReminder = await _dbContext.Tickets.Include(t => t.Comments).Where(t => t.Status == TicketStatus.Open &&
+        var ticketsNeedingReminder = await _dbContext.Tickets
+            .AsNoTracking()
+            .Include(t => t.Comments)
+            .Where(t => t.Status == TicketStatus.Open &&
             t.CreatedAt < reminderThreshold && !t.Comments.Any()).ToListAsync();
 
         foreach(var ticket in ticketsNeedingReminder)

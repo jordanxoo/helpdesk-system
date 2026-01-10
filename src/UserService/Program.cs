@@ -241,24 +241,6 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     }
 });
 
-// Database Migration (automatyczne przy starcie w Development)
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
-    
-    try
-    {
-        // Próba migracji
-        dbContext.Database.Migrate();
-        app.Logger.LogInformation("Database migration completed successfully");
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogWarning(ex, "Database migration failed or not needed");
-    }
-}
-
 app.Logger.LogInformation("UserService started successfully");
 
 app.Run();
