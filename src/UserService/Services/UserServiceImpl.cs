@@ -236,7 +236,8 @@ public class UserServiceImpl : IUserService
         await _publishEndpoint.Publish(new UserDeletedEvent
         {
             UserId = id,
-            Email = user.Email
+            Email = user.Email,
+            DeletedAt = DateTime.UtcNow
         });
 
         // Save both the deletion and the outbox message in one atomic transaction

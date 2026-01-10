@@ -1,19 +1,19 @@
 using MassTransit;
 using Microsoft.AspNetCore.Identity;
-using Shared.Events;
 using AuthService.Data;
+using Shared.Events;
 
 namespace AuthService.Consumers;
 
 public class UserDeletedConsumer : IConsumer<UserDeletedEvent>
 {
-    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<UserDeletedConsumer> _logger;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public UserDeletedConsumer(UserManager<ApplicationUser> userManager, ILogger<UserDeletedConsumer> logger)
+    public UserDeletedConsumer(ILogger<UserDeletedConsumer> logger, UserManager<ApplicationUser> userManager)
     {
-        _userManager = userManager;
         _logger = logger;
+        _userManager = userManager;
     }
 
     public async Task Consume(ConsumeContext<UserDeletedEvent> context)

@@ -34,6 +34,7 @@ export default function TicketsPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isCustomer = user.role === 'Customer';
   const isAgentOrAdmin = user.role === 'Agent' || user.role === 'Administrator';
+  const isAdmin = user.role === "Admin";
 
   const totalPages = Math.ceil(totalCount / (filters.pageSize || 10));
 
@@ -172,9 +173,11 @@ export default function TicketsPage() {
             {loading ? 'Ładowanie...' : `Znaleziono ${totalCount} zgłoszeń`}
           </p>
         </div>
+        {isCustomer &&(
         <Button onClick={() => navigate('/tickets/create')}>
           + Nowe zgłoszenie
         </Button>
+        )}
       </div>
 
       {/* Tabs for Agent/Admin */}
