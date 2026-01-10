@@ -59,3 +59,43 @@ export interface TicketDetails extends Ticket {
     comments: TicketComment[];
     attachment?: TicketAttachment[];
 }
+
+// Search filter request (mirrors backend TicketFilterRequest)
+export interface TicketSearchFilter {
+  searchTerm?: string;
+  status?: string;
+  priority?: string;
+  category?: string;
+  customerId?: string;
+  assignedAgentId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+// Paginated response from API
+export interface PaginatedTicketResponse {
+  tickets: Ticket[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+// Audit log entry (mirrors backend TicketAuditLogDto)
+export interface TicketHistoryEntry {
+  id: string;
+  userId: string;
+  action: string;
+  fieldName?: string;
+  oldValue?: string;
+  newValue?: string;
+  description?: string;
+  createdAt: string;
+}
+
+// Update ticket request
+export interface UpdateTicketRequest {
+  title?: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+}

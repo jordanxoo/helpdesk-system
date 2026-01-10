@@ -1,5 +1,14 @@
 import api from './api';
-import type { Ticket, CreateTicketRequest, TicketDetails, TicketAttachment } from '../types/ticket.types';
+import type {
+    Ticket,
+    CreateTicketRequest,
+    TicketDetails,
+    TicketAttachment,
+    TicketSearchFilter,
+    TicketHistoryEntry,
+    UpdateTicketRequest,
+    PaginatedTicketResponse
+} from '../types/ticket.types';
 
 // Interface for paginated response from backend
 interface TicketApiResponse {
@@ -69,7 +78,7 @@ export const ticketService = {
     async uploadAttachment(ticketId: string, file: File): Promise<TicketAttachment> {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         const response = await api.post<TicketAttachment>(
             `/api/tickets/${ticketId}/attachments`,
             formData,
@@ -79,6 +88,28 @@ export const ticketService = {
                 },
             }
         );
+        return response.data;
+    },
+
+    async searchTickets(filter: TicketSearchFilter): Promise<PaginatedTicketResponse> {
+        const response = await api.post<PaginatedTicketResponse>('/api/tickets/search', filter);
+        return response.data;
+    },
+
+    async getAssignedTickets(page: number = 1, pageSize: number = 10): Promise<PaginatedTicketResponse> {
+        const response = await api.get<PaginatedTicketResponse>('/api/tickets/assigned', {
+            params: { page, pageSize }
+        });
+        return response.data;
+    },
+
+    async updateTicket(id: string, data: UpdateTicketRequest): Promise<TicketDetails> {
+        const response = await api.put<TicketDetails>(`/api/tickets/${id}`, data);
+        return response.data;
+    },
+
+    async getTicketHistory(ticketId: string): Promise<TicketHistoryEntry[]> {
+        const response = await api.get<TicketHistoryEntry[]>(`/api/tickets/${ticketId}/history`);
         return response.data;
     },
 };

@@ -4,7 +4,8 @@ import type {User, CreateUserRequest, UpdateUserRequest, UpdateProfileRequest} f
 
 export const userService = {
     async getAllUsers(): Promise<User[]> {
-    const response = await api.get<{users: User[], totalCount: number, page: number, pageSize: number}>('/api/users?pageSize=1000');
+    // Backend limits pageSize to max 100
+    const response = await api.get<{users: User[], totalCount: number, page: number, pageSize: number}>('/api/users?pageSize=100');
     return response.data.users;
     },
 
