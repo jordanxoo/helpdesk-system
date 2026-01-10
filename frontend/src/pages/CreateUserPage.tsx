@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import Layout from '@/components/ui/Layout';
 import { authService } from '@/services/authService';
+import { userService } from '@/services/userService';
 import type { PasswordRequirements } from '@/types/auth.types';
 
 export default function CreateUserPage() {
@@ -93,8 +94,29 @@ export default function CreateUserPage() {
             newErrors.lastName = 'Nazwisko jest wymagane';
         }
 
+        if (!formData.phoneNumber) {
+            newErrors.phoneNumber = 'Numer telefonu jest wymagany';
+        } else if (!/^\+?[1-9]\d{8,14}$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+            newErrors.phoneNumber = 'Nieprawidłowy format (np. +48123456789 lub 123456789)';
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+    };
+
+    const waitForUserSync = async (email: string, maxAttempts = 10): Promise<boolean> => {
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                const users = await userService.getAllUsers();
+                if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+                    return true;
+                }
+            } catch {
+                // Ignore errors during polling
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        return false;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -106,17 +128,19 @@ export default function CreateUserPage() {
 
         try {
             setLoading(true);
-            // TODO: Replace with real API call
-            // await userService.createUser(formData);
-            console.log('Creating user:', formData);
-            
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+            await authService.register(formData);
+
+            // Wait for user to sync to UserService
+            const synced = await waitForUserSync(formData.email);
+            if (!synced) {
+                console.warn('User sync timeout - user may appear after refresh');
+            }
+
             navigate('/users');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to create user:', error);
-            setErrors({ submit: 'Nie udało się utworzyć użytkownika' });
+            const message = error.response?.data?.message || 'Nie udało się utworzyć użytkownika';
+            setErrors({ submit: message });
         } finally {
             setLoading(false);
         }
@@ -259,15 +283,24 @@ export default function CreateUserPage() {
 
                             {/* Phone Number */}
                             <div className="space-y-2">
-                                <Label htmlFor="phoneNumber">Numer telefonu</Label>
+                                <Label htmlFor="phoneNumber">
+                                    Numer telefonu <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
                                     id="phoneNumber"
                                     name="phoneNumber"
                                     type="tel"
                                     value={formData.phoneNumber}
                                     onChange={handleChange}
-                                    placeholder="+48 123 456 789"
+                                    placeholder="+48123456789"
+                                    className={errors.phoneNumber ? 'border-red-500' : ''}
                                 />
+                                {errors.phoneNumber && (
+                                    <p className="text-sm text-red-500">{errors.phoneNumber}</p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                    Format międzynarodowy (np. +48123456789) lub lokalny (min. 9 cyfr)
+                                </p>
                             </div>
 
                             {/* Role */}

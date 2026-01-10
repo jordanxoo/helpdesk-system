@@ -8,7 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { ArrowLeft, Send, Clock, User, AlertCircle, Paperclip, Upload, FileText, Image, File, Download, X, ZoomIn } from 'lucide-react';
+import { ArrowLeft, Send, Clock, User, AlertCircle, Paperclip, Upload, FileText, Image, File, Download, X, ZoomIn, History } from 'lucide-react';
+import InlineEdit from '../components/InlineEdit';
+import TicketHistory from '../components/TicketHistory';
 import { userService } from '../services/userService';
 import { validateFile, FILE_UPLOAD_LIMITS } from '../constants/fileValidation';
 
@@ -310,7 +312,20 @@ export default function TicketDetailsPage() {
                 
                 <div className="flex items-start justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">{ticket.title}</h1>
+                        {isAgent ? (
+                            <InlineEdit
+                                value={ticket.title}
+                                onSave={async (newTitle) => {
+                                    const updated = await ticketService.updateTicket(ticket.id, { title: newTitle });
+                                    setTicket(updated);
+                                }}
+                                isEditable={true}
+                                className="text-3xl font-bold mb-2"
+                                placeholder="Tytuł zgłoszenia"
+                            />
+                        ) : (
+                            <h1 className="text-3xl font-bold mb-2">{ticket.title}</h1>
+                        )}
                         <div className="flex gap-2 items-center text-sm text-gray-600">
                             <span className="flex items-center">
                                 <Clock className="mr-1 h-4 w-4" />
@@ -342,7 +357,21 @@ export default function TicketDetailsPage() {
                             <CardTitle>Opis problemu</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="whitespace-pre-wrap text-gray-700">{ticket.description}</p>
+                            {isAgent ? (
+                                <InlineEdit
+                                    value={ticket.description}
+                                    onSave={async (newDescription) => {
+                                        const updated = await ticketService.updateTicket(ticket.id, { description: newDescription });
+                                        setTicket(updated);
+                                    }}
+                                    isEditable={true}
+                                    multiline={true}
+                                    className="text-gray-700"
+                                    placeholder="Opis problemu"
+                                />
+                            ) : (
+                                <p className="whitespace-pre-wrap text-gray-700">{ticket.description}</p>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -544,6 +573,22 @@ export default function TicketDetailsPage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Sekcja historii zmian - tylko dla Agent/Administrator */}
+                    {isAgent && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <History className="h-5 w-5" />
+                                    Historia zmian
+                                </CardTitle>
+                                <CardDescription>Rejestr wszystkich modyfikacji zgłoszenia</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <TicketHistory ticketId={ticket.id} />
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 <div className="space-y-6">
