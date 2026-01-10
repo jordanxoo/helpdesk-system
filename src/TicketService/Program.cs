@@ -200,6 +200,9 @@ builder.Services.AddAuthorization();
 // konfiguracja mass transit
 builder.Services.AddMassTransit( x =>
 {
+    // Register consumers
+    x.AddConsumer<TicketService.Consumers.UserDeletedConsumer>();
+
     x.AddEntityFrameworkOutbox<TicketDbContext>( o =>
     {
         o.QueryDelay = TimeSpan.FromSeconds(1);

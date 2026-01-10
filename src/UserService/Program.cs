@@ -66,6 +66,14 @@ builder.Services.AddMassTransit( x =>
 {
     x.AddConsumer<UserService.Consumers.UserRegisteredConsumer>();
 
+    // Add Outbox Pattern for guaranteed event delivery
+    x.AddEntityFrameworkOutbox<UserDbContext>(o =>
+    {
+        o.UsePostgres();
+        o.UseBusOutbox();
+        o.QueryDelay = TimeSpan.FromSeconds(1);
+    });
+
     x.UsingRabbitMq((context, cfg) =>
     {
         if(messagingSettings != null)

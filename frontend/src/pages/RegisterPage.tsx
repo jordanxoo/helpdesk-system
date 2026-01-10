@@ -14,10 +14,10 @@ export default function RegisterPage()
     const [formData,setFormData] = useState({
         email: '',
         password: '',
-        confirmPassword: ' ',
-        firstName: ' ',
-        lastName: ' ',
-        phoneNumber: ' ',
+        confirmPassword: '',
+        firstName: '',
+        lastName: '',
+        phoneNumber: '',
 
     });
     const [loading, setLoading] = useState(false);

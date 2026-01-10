@@ -741,6 +741,11 @@ public class TicketServiceImpl : ITicketService
                     userInfoCache[userId] = ("Unknown User", null);
                 }
             }
+            catch (Shared.Exceptions.UserNotFoundException)
+            {
+                _logger.LogInformation("User {UserId} not found - account deleted", userId);
+                userInfoCache[userId] = ("(Konto usunięte)", null);
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to fetch user info for {UserId}", userId);
@@ -829,6 +834,11 @@ public class TicketServiceImpl : ITicketService
                 {
                     userInfoCache[userId] = $"{userDto.FirstName} {userDto.LastName}";
                 }
+            }
+            catch (Shared.Exceptions.UserNotFoundException)
+            {
+                _logger.LogInformation("User {UserId} not found - account deleted", userId);
+                userInfoCache[userId] = "(Konto usunięte)";
             }
             catch (Exception ex)
             {

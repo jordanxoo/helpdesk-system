@@ -360,15 +360,17 @@ export default function TicketDetailsPage() {
                                         const borderColor = comment.userRole === 'Customer' ? '#3b82f6' 
                                             : comment.userRole === 'Agent' ? '#a855f7' 
                                             : comment.userRole === 'Administrator' ? '#ef4444' 
-                                            : '#3b82f6';
+                                            : '#6b7280';
                                         return (
                                             <div key={comment.id} className="border-l-4 pl-4 py-2" style={{ borderColor }}>
                                                 <div className="flex items-center justify-between mb-1">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-semibold text-sm">{comment.userName}</span>
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {comment.userRole}
-                                                        </Badge>
+                                                        <span className="font-semibold text-sm">{comment.userName || 'Nieznany użytkownik'}</span>
+                                                        {comment.userRole && (
+                                                            <Badge variant="outline" className="text-xs">
+                                                                {comment.userRole}
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                     <span className="text-xs text-gray-500">
                                                         {new Date(comment.createdAt).toLocaleString('pl-PL')}

@@ -27,3 +27,9 @@ public  record UserCreatedEvent : BaseEvent
     public  Guid UserId{get;init;}
     public string Email {get;init;} = string.Empty;
 }
+
+public record UserDeletedEvent : BaseEvent
+{
+    public Guid UserId { get; init; }
+    public string Email { get; init; } = string.Empty;
+}

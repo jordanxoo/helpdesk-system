@@ -128,10 +128,8 @@ public class UserRepository : IUserRepository
         var user = await GetByIdAsync(id);
         if(user != null)
         {
-            user.IsActive = false;
-            user.UpdatedAt = DateTime.UtcNow;
-
-            await UpdateAsync(user);
+            _context.Users.Remove(user);
+            // let the service layer handle transaction
         }
     }
 

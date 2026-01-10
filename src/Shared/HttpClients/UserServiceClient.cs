@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using Shared.DTOs;
+using Shared.Exceptions;
 
 namespace Shared.HttpClients;
 
@@ -27,6 +28,12 @@ public class UserServiceClient : IUserServiceClient
             
             var response = await _httpClient.GetAsync($"/api/users/{userId}");
             
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogInformation("User {UserId} not found (deleted account)", userId);
+                throw new UserNotFoundException(userId);
+            }
+            
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 _logger.LogWarning("UserService returned Unauthorized for user {UserId}", userId);
@@ -43,6 +50,10 @@ public class UserServiceClient : IUserServiceClient
             var user = await response.Content.ReadFromJsonAsync<UserDto>();
             
             return user;
+        }
+        catch (UserNotFoundException)
+        {
+            throw; // Re-throw to distinguish from other errors
         }
         catch (HttpRequestException ex)
         {

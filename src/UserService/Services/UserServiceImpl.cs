@@ -1,23 +1,31 @@
 namespace UserService.Services;
 
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using Microsoft.VisualBasic;
+using MassTransit;
 using Shared.DTOs;
+using Shared.Events;
 using Shared.Exceptions;
 using Shared.Extensions;
 using Shared.Models;
 using UserService.Repositories;
+using UserService.Data;
 
 public class UserServiceImpl : IUserService
 {
     private readonly IUserRepository _repository;
+    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly UserDbContext _context;
     private readonly ILogger<UserServiceImpl> _logger;
 
-    public UserServiceImpl(IUserRepository repository, ILogger<UserServiceImpl> logger)
+    public UserServiceImpl(
+        IUserRepository repository, 
+        IPublishEndpoint publishEndpoint, 
+        UserDbContext context,
+        ILogger<UserServiceImpl> logger)
     {
         this._logger = logger;
         this._repository = repository;
+        this._publishEndpoint = publishEndpoint;
+        this._context = context;
     }
 
     public async Task<UserDto> GetByIdAsync(Guid id)
@@ -211,15 +219,31 @@ public class UserServiceImpl : IUserService
     public async Task DeleteAsync(Guid id)
     {
         _logger.LogInformation("Deleting user with id: {UserId}", id);
-        
-        if (!await _repository.ExistsAsync(id))
+
+        var user = await _repository.GetByIdAsync(id);
+        if (user == null)
         {
             throw new NotFoundException("User", id);
         }
 
-        await _repository.DeleteAsync(id);
-        
-        _logger.LogInformation("User deleted successfully: {UserId}", id);
+        // Delete from UserService database (marks for deletion but doesn't save)
+        // Direct removal to avoid double query - we already have the user object
+        _context.Users.Remove(user);
+
+        // Publish event for AuthService to consume
+        // NOTE: MassTransit with Outbox pattern automatically wraps this in a transaction
+        // The event is saved to the outbox table in the same transaction as user deletion
+        await _publishEndpoint.Publish(new UserDeletedEvent
+        {
+            UserId = id,
+            Email = user.Email
+        });
+
+        // Save both the deletion and the outbox message in one atomic transaction
+        // The Outbox pattern ensures both succeed or both fail
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("User deleted and UserDeletedEvent published: {UserId}", id);
     }
 
     public async Task<UserDto> AssignOrganizationAsync(Guid userId, Guid organizationId)

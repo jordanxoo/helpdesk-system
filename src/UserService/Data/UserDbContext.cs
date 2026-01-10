@@ -1,4 +1,5 @@
 using System.Runtime.Serialization;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Shared.Models;
 
@@ -16,6 +17,11 @@ public class UserDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Add MassTransit Outbox tables
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
 
         modelBuilder.Entity<User>(entity =>
         {

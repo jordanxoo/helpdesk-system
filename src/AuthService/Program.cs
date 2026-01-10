@@ -99,6 +99,8 @@ builder.Services.AddHealthChecks()
 // MassTransit Configuration
 builder.Services.AddMassTransit(x =>
 {
+    // Register consumers
+    x.AddConsumer<AuthService.Consumers.UserDeletedConsumer>();
 
     x.AddEntityFrameworkOutbox<AuthDbContext>(o =>
     {

@@ -138,9 +138,18 @@ public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest req
     [Authorize(Roles = UserRoles.Administrator)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(Guid id)
     {
         _logger.LogInformation("DELETE /api/users/{Id}", id);
+
+        // Prevent self-deletion
+        var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(currentUserIdClaim, out var currentUserId) && currentUserId == id)
+        {
+            _logger.LogWarning("User {UserId} attempted to delete their own account", id);
+            return BadRequest(new { message = "Cannot delete your own account" });
+        }
 
         await _userService.DeleteAsync(id);
         return NoContent();
