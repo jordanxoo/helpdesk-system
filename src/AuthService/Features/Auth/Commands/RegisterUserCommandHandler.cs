@@ -15,9 +15,7 @@ namespace AuthService.Features.Auth.Commands.RegisterUser;
 
 /// <summary>
 /// HANDLER = "JAK zarejestrować użytkownika"
-/// Implementuje IRequestHandler<TRequest, TResponse>
-/// - TRequest = RegisterUserCommand 
-/// /// - TResponse = AuthTokenResponse 
+/// Implementuje IRequestHandler (TRequest = RegisterUserCommand, TResponse = AuthTokenResponse)
 /// MediatR automatycznie:
 /// 1. Znajdzie ten handler gdy wywołasz mediator.Send(RegisterUserCommand)
 /// 2. Wstrzyknie zależności przez konstruktor 

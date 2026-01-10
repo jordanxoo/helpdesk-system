@@ -1,3 +1,3 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using KnowledgeService.Data;
+using KnowledgeBaseService.Data;
